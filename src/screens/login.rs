@@ -8,10 +8,13 @@ use ratatui::{
     widgets::{Block, Paragraph},
 };
 
-use crate::screens::{
-    browse::BrowseScreen,
-    home::HomeScreen,
-    screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
+use crate::{
+    screens::{
+        browse::BrowseScreen,
+        home::HomeScreen,
+        screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
+    },
+    users,
 };
 
 #[derive(Default)]
@@ -81,7 +84,11 @@ impl Screen for LoginScreen {
 impl LoginScreen {
     fn submit(&mut self) -> Option<Box<dyn Screen>> {
         if self.selected == 1 {
-            return Some(Box::new(BrowseScreen::new(self.username.clone())));
+            if users::validate_login(&self.username, &self.password).expect("aaaaa") {
+                return Some(Box::new(BrowseScreen::new(self.username.clone())));
+            }
+            // TODO: error message
+            return None;
         }
         self.focus_next();
         None

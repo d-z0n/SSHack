@@ -8,10 +8,13 @@ use ratatui::{
     widgets::{Block, Paragraph},
 };
 
-use crate::screens::{
-    browse::BrowseScreen,
-    home::HomeScreen,
-    screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
+use crate::{
+    screens::{
+        browse::BrowseScreen,
+        home::HomeScreen,
+        screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
+    },
+    users,
 };
 
 #[derive(Default)]
@@ -93,12 +96,19 @@ impl Screen for RegisterScreen {
 impl RegisterScreen {
     fn submit(&mut self) -> Option<Box<dyn Screen>> {
         if self.selected == 2 {
+            if self.password != self.confirm {
+                return None;
+            }
+            if self.username.len() == 0 || self.password.len() == 0 {
+                return None;
+            }
+            if let Err(e) = users::create_user(&self.username, &self.password) {
+                // TODO: error messages
+                return None;
+            }
             return Some(Box::new(BrowseScreen::new(self.username.clone())));
         }
         self.focus_next();
-        // TODO: check if password and confirm matches and
-        // interact with a database in order to add a user/find a collision.
-        // Also figure out a good way to show an error message.
         None
     }
 
