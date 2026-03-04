@@ -9,6 +9,7 @@ use ratatui::{
 };
 
 use crate::screens::{
+    browse::BrowseScreen,
     home::HomeScreen,
     screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
 };
@@ -35,7 +36,11 @@ impl Screen for LoginScreen {
         None
     }
     fn render(&mut self, f: &mut ratatui::Frame) {
-        let area = draw_screen_border(f, "LOGIN");
+        let area = draw_screen_border(
+            f,
+            "LOGIN",
+            "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - GO BACK: <ESC> - SUBMIT: <ENTER>",
+        );
         let [_, col, _] = Layout::horizontal([
             Constraint::Fill(1),
             Constraint::Fill(2),
@@ -75,10 +80,10 @@ impl Screen for LoginScreen {
 
 impl LoginScreen {
     fn submit(&mut self) -> Option<Box<dyn Screen>> {
+        if self.selected == 1 {
+            return Some(Box::new(BrowseScreen::new(self.username.clone())));
+        }
         self.focus_next();
-        // TODO: check if password and confirm matches and
-        // interact with a database in order to add a user/find a collision.
-        // Also figure out a good way to show an error message.
         None
     }
 

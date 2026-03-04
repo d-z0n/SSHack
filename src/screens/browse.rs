@@ -12,15 +12,16 @@ use crate::screens::{
     self,
     login::LoginScreen,
     register::RegisterScreen,
-    screen::{draw_screen_border, Screen, HIGHLIGHT_COLOR, STANDARD_COLOR},
+    screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
 };
 
 #[derive(Default)]
-pub struct HomeScreen {
+pub struct BrowseScreen {
+    user: String,
     selected: u8,
 }
 
-impl Screen for HomeScreen {
+impl Screen for BrowseScreen {
     fn handle_input(&mut self, key: (KeyCode, KeyModifiers)) -> Option<Box<dyn Screen>> {
         match key {
             (KeyCode::Enter, _) => return self.submit(),
@@ -33,7 +34,7 @@ impl Screen for HomeScreen {
     fn render(&mut self, f: &mut ratatui::Frame) {
         let area = draw_screen_border(
             f,
-            "HOME",
+            "BROWSE",
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER>",
         );
         let [_, col, _] = Layout::horizontal([
@@ -42,9 +43,8 @@ impl Screen for HomeScreen {
             Constraint::Fill(1),
         ])
         .areas(area);
-        let [_, login, register, _] = Layout::vertical([
+        let [_, username, _] = Layout::vertical([
             Constraint::Fill(1),
-            Constraint::Length(3),
             Constraint::Length(3),
             Constraint::Fill(1),
         ])
@@ -55,31 +55,26 @@ impl Screen for HomeScreen {
             _ => STANDARD_COLOR,
         };
         f.render_widget(
-            Paragraph::new("LOGIN")
+            Paragraph::new(self.user.as_str())
+                .centered()
                 .block(Block::bordered())
                 .style(color),
-            login,
-        );
-        let color = match self.selected {
-            1 => HIGHLIGHT_COLOR,
-            _ => STANDARD_COLOR,
-        };
-        f.render_widget(
-            Paragraph::new("REGISTER")
-                .block(Block::bordered())
-                .style(color),
-            register,
+            username,
         );
     }
 }
 
-impl HomeScreen {
+impl BrowseScreen {
     fn submit(&mut self) -> Option<Box<dyn Screen>> {
         match self.selected {
             0 => Some(Box::new(LoginScreen::default())),
             1 => Some(Box::new(RegisterScreen::default())),
             _ => None,
         }
+    }
+
+    pub fn new(user: String) -> Self {
+        Self { user, selected: 0 }
     }
 
     fn focus_next(&mut self) {
