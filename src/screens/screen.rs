@@ -59,10 +59,7 @@ pub fn draw_screen_border(
         Some(u) => {
             let [user_bar, body] =
                 Layout::vertical([Constraint::Length(3), Constraint::Fill(1)]).areas(body);
-            let points = match u.points() {
-                Ok(p) => p.to_string(),
-                Err(e) => e.to_string(),
-            };
+            let points = u.points().to_string();
             f.render_widget(
                 Paragraph::new(format!(
                     "logged in as user: {} - points: {}",

@@ -30,28 +30,35 @@ pub fn create_missing_db() {
     const QUERY2: &str = "CREATE TABLE IF NOT EXISTS flags (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING, description STRING, points INTEGER, flag STRING)";
     conn.execute(QUERY2, [])
         .expect("could not create table flags");
-    const QUERY3: &str = "CREATE TABLE IF NOT EXISTS cleared (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, fid INTEGER, FOREIGN KEY (uid) REFERENCES users(id), FOREIGN KEY (fid) REFERENCES flags(id))";
+    const QUERY3: &str = "CREATE TABLE IF NOT EXISTS solved (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, fid INTEGER, FOREIGN KEY (uid) REFERENCES users(id), FOREIGN KEY (fid) REFERENCES flags(id))";
     conn.execute(QUERY3, [])
-        .expect("could not create table cleared");
+        .expect("could not create table solved");
 }
 
 pub struct User {
     name: String,
-    pub id: i32,
+    id: i32,
+    points: i32,
 }
 
 impl User {
     fn new(name: String, id: i32) -> Self {
-        Self { name, id }
+        let mut s = Self {
+            name,
+            id,
+            points: 0,
+        };
+        let _ = s.reload();
+        s
     }
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    pub fn create_user(name: &String, password: &String) -> Result<User, Box<dyn Error>> {
+    pub fn register_user(name: &String, password: &String) -> Result<User, Box<dyn Error>> {
         let conn = conn();
 
-        const QUERY: &str = "SELECT EXISTS (SELECT * FROM users WHERE name = (?1))";
+        const QUERY: &str = "SELECT EXISTS (SELECT * FROM users WHERE name = ?1)";
 
         let mut stmt = conn.prepare(QUERY)?;
         let mut user = stmt.query([&name])?;
@@ -64,14 +71,16 @@ impl User {
         }
 
         const QUERY2: &str = "INSERT INTO users (name, password_hash) VALUES (?1,?2)";
-        let mut statement = conn.prepare(QUERY2)?;
+        let mut stmt = conn.prepare(QUERY2)?;
 
         let hash = bcrypt::hash(password, 13)?;
 
-        statement.execute([name, &hash])?;
+        stmt.execute([name, &hash])?;
 
         // explicit drop so that we can borrow again
         drop(user);
+        const QUERY3: &str = "SELECT id, name FROM users WHERE name = ?1";
+        let mut stmt = conn.prepare(QUERY3)?;
         let mut user = stmt.query([&name])?;
         let user = user
             .next()?
@@ -99,9 +108,9 @@ impl User {
         }
     }
 
-    pub fn points(&self) -> Result<i32, Box<dyn Error>> {
+    pub fn calculate_points(&self) -> Result<i32, Box<dyn Error>> {
         let conn = conn();
-        let QUERY: &str = "SELECT IFNULL(SUM(f.points),0) FROM flags f JOIN cleared c ON c.fid = f.id JOIN users u ON u.id = c.uid WHERE u.id = (?1)";
+        const QUERY: &str = "SELECT IFNULL(SUM(f.points),0) FROM flags f JOIN solved c ON c.fid = f.id JOIN users u ON u.id = c.uid WHERE u.id = (?1)";
         let mut stmt = conn.prepare(QUERY).unwrap();
         let mut points = stmt.query([&self.id])?;
         let points = match points.next()? {
@@ -109,6 +118,19 @@ impl User {
             None => 0,
         };
         Ok(points)
+    }
+
+    pub fn reload(&mut self) -> Result<(), Box<dyn Error>> {
+        self.points = self.calculate_points()?;
+        Ok(())
+    }
+
+    pub fn points(&self) -> i32 {
+        self.points
+    }
+
+    pub fn id(&self) -> i32 {
+        self.id
     }
 }
 
@@ -118,9 +140,28 @@ pub struct Flag {
     flag: String,
     points: i32,
     id: i32,
+    solved: bool,
 }
 
 impl Flag {
+    pub fn get_all_with_user(user: &User) -> Result<Vec<Flag>, Box<dyn Error>> {
+        let conn = conn();
+        const QUERY: &str = "SELECT f.*, (IFNULL(s.id, 0) AND f.id = s.fid) FROM flags f LEFT JOIN solved s ON (s.fid = f.id AND s.uid = ?1)";
+        let mut stmt = conn.prepare(QUERY)?;
+        let res = stmt.query_map([&user.id()], |row| {
+            Ok(Flag::new(
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+            ))
+        })?;
+        let res = res.filter_map(|x| x.ok()).collect();
+        Ok(res)
+    }
+
     pub fn get_all() -> Result<Vec<Flag>, Box<dyn Error>> {
         let conn = conn();
         const QUERY: &str = "SELECT * FROM flags";
@@ -132,27 +173,41 @@ impl Flag {
                 row.get(2)?,
                 row.get(3)?,
                 row.get(4)?,
+                false,
             ))
         })?;
         let res = res.filter_map(|x| x.ok()).collect();
         Ok(res)
     }
 
-    fn new(id: i32, name: String, description: String, points: i32, flag: String) -> Self {
+    pub fn id(&self) -> i32 {
+        self.id
+    }
+
+    fn new(
+        id: i32,
+        name: String,
+        description: String,
+        points: i32,
+        flag: String,
+        solved: bool,
+    ) -> Self {
         Self {
             name,
             description,
             flag,
             points,
             id,
+            solved,
         }
     }
 
-    pub fn row_parts(&self) -> [&str; 3] {
+    pub fn row_parts(&self) -> [&str; 4] {
         [
             &self.name,
             &self.description,
             format!("{}", self.points).leak(),
+            if self.solved { "[x]" } else { "[ ]" },
         ]
     }
 
@@ -170,9 +225,13 @@ impl Flag {
         &self.flag
     }
 
-    pub fn clear_for_user(&self, id: i32) -> Result<(), Box<dyn Error>> {
+    pub fn solved(&self) -> bool {
+        self.solved
+    }
+
+    pub fn mark_solved_for_user(&self, id: i32) -> Result<(), Box<dyn Error>> {
         let conn = conn();
-        const QUERY: &str = "SELECT EXISTS ( SELECT * FROM cleared WHERE uid = ?1 AND fid = ?2)";
+        const QUERY: &str = "SELECT EXISTS ( SELECT * FROM solved WHERE uid = ?1 AND fid = ?2)";
 
         let mut stmt = conn.prepare(QUERY)?;
         let mut entry = stmt.query([&id, &self.id])?;
@@ -184,7 +243,7 @@ impl Flag {
             )));
         }
 
-        const QUERY2: &str = "INSERT INTO cleared (uid, fid) VALUES (?1,?2)";
+        const QUERY2: &str = "INSERT INTO solved (uid, fid) VALUES (?1,?2)";
         let mut statement = conn.prepare(QUERY2)?;
 
         statement.execute([&id, &self.id])?;
@@ -194,33 +253,25 @@ impl Flag {
 
 pub fn clear_flags() {
     let conn = conn();
-    const QUERY: &str = "DROP TABLE IF EXISTS flags";
+    const QUERY: &str = "DELETE FROM flags";
     conn.execute(QUERY, []).unwrap();
-    create_missing_db();
 }
 
-pub fn create_test_flags() {
+pub fn create_flag(name: &str, description: &str, points: i32, flag: &str) {
     let conn = conn();
     const QUERY: &str = "INSERT INTO flags (name, description,points, flag) VALUES (?1,?2,?3,?4)";
     let mut stmt = conn.prepare(QUERY).unwrap();
-    stmt.execute(["flag0", "easy test flag", "100", "ctf{flag}"])
+    stmt.execute([name, description, &points.to_string(), flag])
         .unwrap();
-    stmt.execute(["flag1", "hard flag", "500", "ctf{flag_1337}"])
-        .unwrap();
-    stmt.execute(["flag2", "medium flag", "300", "ctf{flag_leet}"])
-        .unwrap();
-    stmt.execute([
-        "mdflag",
-        "# markdown flag\n[with links](https://github.com)",
-        "300",
-        "ctf{flag_md}",
-    ])
-    .unwrap();
-    stmt.execute([
-        "longflag",
-        "A REALLY LONG FLAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n\n\n\n\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n\n\n\n(very long)",
-        "300",
-        "ctf{flag_md}",
-    ])
-    .unwrap();
+}
+
+pub fn delete_flag(id: i32) -> Result<(), Box<dyn Error>> {
+    let conn = conn();
+    const QUERY: &str = "DELETE FROM flags WHERE id = ?1";
+    let mut stmt = conn.prepare(QUERY).unwrap();
+    let c = stmt.execute([id]).unwrap();
+    if c == 0 {
+        return Err(format!("no flag with id: {}", id).into());
+    }
+    Ok(())
 }

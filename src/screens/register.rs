@@ -105,7 +105,7 @@ impl RegisterScreen {
                 self.error = Some("password can not be empty".to_string());
                 return None;
             }
-            match database::User::create_user(&self.username, &self.password) {
+            match database::User::register_user(&self.username, &self.password) {
                 Err(e) => {
                     self.error = Some(e.to_string());
                     return None;

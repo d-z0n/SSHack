@@ -1,6 +1,8 @@
+mod cli;
 mod database;
-use std::error::Error;
+use std::{error::Error, path::PathBuf};
 
+use clap::{Parser, Subcommand};
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::{
@@ -9,17 +11,21 @@ use ratatui::{
     },
 };
 
+use crate::cli::{Args, Commands};
+
 mod screens;
 
 fn main() -> Result<(), Box<dyn Error>> {
     database::create_missing_db();
+    let args = Args::parse();
+    match args.command {
+        Commands::Run => {
+            ratatui::run(app)?;
+            ratatui::restore();
+        }
+        Commands::Flags { command } => command.run(),
+    }
 
-    // test: run once to populate flags:
-    database::clear_flags();
-    database::create_test_flags();
-
-    ratatui::run(app)?;
-    ratatui::restore();
     Ok(())
 }
 

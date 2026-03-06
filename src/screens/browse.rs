@@ -40,6 +40,7 @@ impl Screen for BrowseScreen {
             (KeyCode::Tab, _) | (KeyCode::Down, _) => self.focus_next(),
             (KeyCode::BackTab, KeyModifiers::SHIFT) | (KeyCode::Up, _) => self.focus_prev(),
             (KeyCode::Backspace, _) => self.erase(),
+            (KeyCode::Char('r'), _) => return self.reload(),
             (KeyCode::Char(c), _) => self.write_char(c),
             _ => (),
         };
@@ -49,7 +50,7 @@ impl Screen for BrowseScreen {
         let area = draw_screen_border(
             f,
             "BROWSE",
-            "QUIT: <CTRL+Q> - LOG OUT: <ESC> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER>",
+            "QUIT: <CTRL+Q> - LOG OUT: <ESC> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER> - RELOAD: <CTRL+R>",
             self.error.as_deref(),
             Some(&self.user),
         );
@@ -79,12 +80,13 @@ impl BrowseScreen {
                         self.error = Some("incorrect flag submitted".to_string());
                         return None;
                     }
-                    if let Err(e) = flag.clear_for_user(self.user.id) {
+                    if let Err(e) = flag.mark_solved_for_user(self.user.id()) {
                         self.error = Some(e.to_string());
                         return None;
                     };
                     self.submission.clear();
                     self.state = BrowseScreenState::Browse;
+                    self.reload();
                 }
             }
         }
@@ -92,7 +94,7 @@ impl BrowseScreen {
     }
 
     pub fn new(user: User) -> Self {
-        let (flags, error) = match Flag::get_all() {
+        let (flags, error) = match Flag::get_all_with_user(&user) {
             Ok(flags) => (flags, None),
             Err(e) => (vec![], Some(e.to_string())),
         };
@@ -150,7 +152,7 @@ impl BrowseScreen {
     }
 
     fn draw_table(&mut self, f: &mut Frame, a: Rect) {
-        let header = ["Name", "Description", "Points"]
+        let header = ["Name", "Description", "Points", "Solved"]
             .into_iter()
             .map(Cell::from)
             .collect::<Row>()
@@ -172,8 +174,10 @@ impl BrowseScreen {
             rows,
             [
                 Constraint::Fill(1),
+                Constraint::Fill(2),
                 Constraint::Fill(1),
-                Constraint::Fill(1),
+                // seven for 'Solved' +1
+                Constraint::Length(7),
             ],
         )
         .header(header)
@@ -210,12 +214,17 @@ impl BrowseScreen {
             BrowseScreenState::Submit => ERROR_COLOR,
         };
 
-        let title = Paragraph::new(format!("{}\nPoints - {}", flag.name(), flag.points()))
-            .style(style2)
-            .bold()
-            .italic()
-            .centered()
-            .block(Block::new().borders(Borders::BOTTOM).border_style(style1));
+        let title = Paragraph::new(format!(
+            "{}\nPoints - {}{}",
+            flag.name(),
+            flag.points(),
+            if flag.solved() { " - SOLVED" } else { "" }
+        ))
+        .style(style2)
+        .bold()
+        .italic()
+        .centered()
+        .block(Block::new().borders(Borders::BOTTOM).border_style(style1));
         f.render_widget(title, header);
 
         let description_text = Paragraph::new(flag.description())
@@ -231,5 +240,17 @@ impl BrowseScreen {
         f.render_widget(input_box, submission);
 
         Ok(())
+    }
+
+    fn reload(&mut self) -> Option<Box<dyn Screen>> {
+        let _ = self.user.reload().is_err_and(|x| {
+            self.error = Some(x.to_string());
+            true
+        });
+        match Flag::get_all_with_user(&self.user) {
+            Ok(flags) => self.flags = flags,
+            Err(e) => self.error = Some(e.to_string()),
+        };
+        None
     }
 }

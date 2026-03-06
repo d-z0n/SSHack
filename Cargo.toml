@@ -1,9 +1,10 @@
 [package]
-name = "shacker"
+name = "sctf"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 bcrypt = "0.19.0"
+clap = { version = "4.5.60", features = ["derive"] }
 ratatui = "0.30.0"
 rusqlite = "0.38.0"
