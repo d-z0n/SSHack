@@ -14,7 +14,7 @@ use crate::{
         home::HomeScreen,
         screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
     },
-    users,
+    database,
 };
 
 #[derive(Default)]
@@ -22,10 +22,13 @@ pub struct LoginScreen {
     username: String,
     password: String,
     selected: u8,
+    error: Option<String>
 }
 
 impl Screen for LoginScreen {
     fn handle_input(&mut self, key: (KeyCode, KeyModifiers)) -> Option<Box<dyn Screen>> {
+        // Remove error on input
+        self.error = None;
         match key {
             (KeyCode::Enter, _) => return self.submit(),
             (KeyCode::Char(c), _) => self.write_char(c),
@@ -43,6 +46,7 @@ impl Screen for LoginScreen {
             f,
             "LOGIN",
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - GO BACK: <ESC> - SUBMIT: <ENTER>",
+            self.error.as_deref()
         );
         let [_, col, _] = Layout::horizontal([
             Constraint::Fill(1),
@@ -84,8 +88,9 @@ impl Screen for LoginScreen {
 impl LoginScreen {
     fn submit(&mut self) -> Option<Box<dyn Screen>> {
         if self.selected == 1 {
-            if users::validate_login(&self.username, &self.password).expect("aaaaa") {
-                return Some(Box::new(BrowseScreen::new(self.username.clone())));
+            match database::User::login(&self.username, &self.password) {
+                Ok(u) => {return Some(Box::new(BrowseScreen::new(u)))},
+                Err(e) => self.error = Some(e.to_string()),
             }
             // TODO: error message
             return None;

@@ -35,6 +35,7 @@ impl Screen for HomeScreen {
             f,
             "HOME",
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER>",
+                None
         );
         let [_, col, _] = Layout::horizontal([
             Constraint::Fill(1),

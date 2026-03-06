@@ -8,23 +8,21 @@ use ratatui::{
     widgets::{Block, Paragraph},
 };
 
-use crate::screens::{
-    self,
-    login::LoginScreen,
-    register::RegisterScreen,
-    screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
-};
+use crate::{database::User, screens::{
+    self, home::HomeScreen, login::LoginScreen, register::RegisterScreen, screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border}
+}};
 
-#[derive(Default)]
 pub struct BrowseScreen {
-    user: String,
+    user: User,
     selected: u8,
+    error: Option<String>,
 }
 
 impl Screen for BrowseScreen {
     fn handle_input(&mut self, key: (KeyCode, KeyModifiers)) -> Option<Box<dyn Screen>> {
         match key {
             (KeyCode::Enter, _) => return self.submit(),
+            (KeyCode::Esc,_) => return Some(Box::new(HomeScreen::default())),
             (KeyCode::Tab, _) | (KeyCode::Down, _) => self.focus_next(),
             (KeyCode::BackTab, KeyModifiers::SHIFT) | (KeyCode::Up, _) => self.focus_prev(),
             _ => (),
@@ -35,7 +33,8 @@ impl Screen for BrowseScreen {
         let area = draw_screen_border(
             f,
             "BROWSE",
-            "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER>",
+            "QUIT: <CTRL+Q> - LOG OUT: <ESC> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER>",
+            self.error.as_deref()
         );
         let [_, col, _] = Layout::horizontal([
             Constraint::Fill(1),
@@ -55,7 +54,7 @@ impl Screen for BrowseScreen {
             _ => STANDARD_COLOR,
         };
         f.render_widget(
-            Paragraph::new(self.user.as_str())
+            Paragraph::new(self.user.name())
                 .centered()
                 .block(Block::bordered())
                 .style(color),
@@ -73,8 +72,8 @@ impl BrowseScreen {
         }
     }
 
-    pub fn new(user: String) -> Self {
-        Self { user, selected: 0 }
+    pub fn new(user: User) -> Self {
+        Self { user, selected: 0, error: None }
     }
 
     fn focus_next(&mut self) {

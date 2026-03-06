@@ -14,7 +14,7 @@ use crate::{
         home::HomeScreen,
         screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
     },
-    users,
+    database,
 };
 
 #[derive(Default)]
@@ -23,10 +23,13 @@ pub struct RegisterScreen {
     password: String,
     confirm: String,
     selected: u8,
+    error: Option<String>
 }
 
 impl Screen for RegisterScreen {
     fn handle_input(&mut self, key: (KeyCode, KeyModifiers)) -> Option<Box<dyn Screen>> {
+        // Remove error on input
+        self.error = None;
         match key {
             (KeyCode::Enter, _) => return self.submit(),
             (KeyCode::Char(c), _) => self.write_char(c),
@@ -43,6 +46,7 @@ impl Screen for RegisterScreen {
             f,
             "REGISTER",
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - GO BACK: <ESC> - SUBMIT: <ENTER>",
+                self.error.as_deref()
         );
 
         let [_, col, _] = Layout::horizontal([
@@ -97,16 +101,22 @@ impl RegisterScreen {
     fn submit(&mut self) -> Option<Box<dyn Screen>> {
         if self.selected == 2 {
             if self.password != self.confirm {
+                self.error = Some("passwords doesn't match".to_string());
                 return None;
             }
             if self.username.len() == 0 || self.password.len() == 0 {
+                self.error = Some("password can not be empty".to_string());
                 return None;
             }
-            if let Err(e) = users::create_user(&self.username, &self.password) {
-                // TODO: error messages
+            match  database::User::create_user(&self.username, &self.password) {
+
+Err(e) => {                self.error = Some(e.to_string());
                 return None;
+                }
+                Ok(u) => { 
+                return Some(Box::new(BrowseScreen::new(u)));
+                }
             }
-            return Some(Box::new(BrowseScreen::new(self.username.clone())));
         }
         self.focus_next();
         None

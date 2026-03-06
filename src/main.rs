@@ -1,4 +1,4 @@
-mod users;
+mod database;
 use std::{arch::x86_64::_SIDD_NEGATIVE_POLARITY, error::Error, process::exit};
 
 use ratatui::{
@@ -14,7 +14,7 @@ use ratatui::{
 mod screens;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    users::create_missing_db();
+    database::create_missing_db();
     ratatui::run(app)?;
     ratatui::restore();
     Ok(())
