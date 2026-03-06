@@ -1,20 +1,16 @@
 use ratatui::{
-    crossterm::{
-        event::{KeyCode, KeyModifiers},
-        style::Color,
-    },
-    layout::{Constraint, Layout, Margin},
-    style::Style,
+    crossterm::event::{KeyCode, KeyModifiers},
+    layout::{Constraint, Layout},
     widgets::{Block, Paragraph},
 };
 
 use crate::{
+    database,
     screens::{
         browse::BrowseScreen,
         home::HomeScreen,
         screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
     },
-    database,
 };
 
 #[derive(Default)]
@@ -23,7 +19,7 @@ pub struct RegisterScreen {
     password: String,
     confirm: String,
     selected: u8,
-    error: Option<String>
+    error: Option<String>,
 }
 
 impl Screen for RegisterScreen {
@@ -46,7 +42,8 @@ impl Screen for RegisterScreen {
             f,
             "REGISTER",
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - GO BACK: <ESC> - SUBMIT: <ENTER>",
-                self.error.as_deref()
+            self.error.as_deref(),
+            None,
         );
 
         let [_, col, _] = Layout::horizontal([
@@ -104,17 +101,17 @@ impl RegisterScreen {
                 self.error = Some("passwords doesn't match".to_string());
                 return None;
             }
-            if self.username.len() == 0 || self.password.len() == 0 {
+            if self.username.is_empty() || self.password.is_empty() {
                 self.error = Some("password can not be empty".to_string());
                 return None;
             }
-            match  database::User::create_user(&self.username, &self.password) {
-
-Err(e) => {                self.error = Some(e.to_string());
-                return None;
+            match database::User::create_user(&self.username, &self.password) {
+                Err(e) => {
+                    self.error = Some(e.to_string());
+                    return None;
                 }
-                Ok(u) => { 
-                return Some(Box::new(BrowseScreen::new(u)));
+                Ok(u) => {
+                    return Some(Box::new(BrowseScreen::new(u)));
                 }
             }
         }

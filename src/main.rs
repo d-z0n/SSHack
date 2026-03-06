@@ -1,20 +1,23 @@
 mod database;
-use std::{arch::x86_64::_SIDD_NEGATIVE_POLARITY, error::Error, process::exit};
+use std::error::Error;
 
 use ratatui::{
-    DefaultTerminal, Frame, Viewport,
+    DefaultTerminal, Frame,
     crossterm::{
         self,
-        event::{KeyCode, KeyEvent, KeyModifiers},
+        event::{KeyCode, KeyModifiers},
     },
-    layout::{Constraint, Layout},
-    widgets::{Block, Paragraph},
 };
 
 mod screens;
 
 fn main() -> Result<(), Box<dyn Error>> {
     database::create_missing_db();
+
+    // test: run once to populate flags:
+    database::clear_flags();
+    database::create_test_flags();
+
     ratatui::run(app)?;
     ratatui::restore();
     Ok(())

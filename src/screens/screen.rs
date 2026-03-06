@@ -1,9 +1,11 @@
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
-use ratatui::style::{Color, Style, Stylize};
-use ratatui::text::{Line, Text};
+use ratatui::style::{Color, Style};
+use ratatui::text::Text;
 use ratatui::widgets::{Block, Paragraph};
+
+use crate::database::User;
 
 const BG_HEX: u32 = 0x2D2D2A;
 const FG_HEX: u32 = 0x3F5E5A;
@@ -25,14 +27,11 @@ pub fn draw_screen_border(
     title: &'static str,
     commands: &'static str,
     error: Option<&str>,
+    user: Option<&User>,
 ) -> Rect {
     let area = f.area();
     let [body, command_bar] =
         Layout::vertical([Constraint::Fill(1), Constraint::Length(3)]).areas(area);
-    f.render_widget(
-        Block::bordered().title_top(title).style(HIGHLIGHT_COLOR),
-        body,
-    );
     if let Some(e) = error {
         f.render_widget(
             Paragraph::new(e).block(Block::bordered().title_top("ERROR").style(ERROR_COLOR)),
@@ -48,17 +47,42 @@ pub fn draw_screen_border(
             command_bar,
         );
     }
-    body.inner(Margin::new(1, 1))
+
+    match user {
+        None => {
+            f.render_widget(
+                Block::bordered().title_top(title).style(HIGHLIGHT_COLOR),
+                body,
+            );
+            body.inner(Margin::new(1, 1))
+        }
+        Some(u) => {
+            let [user_bar, body] =
+                Layout::vertical([Constraint::Length(3), Constraint::Fill(1)]).areas(body);
+            let points = match u.points() {
+                Ok(p) => p.to_string(),
+                Err(e) => e.to_string(),
+            };
+            f.render_widget(
+                Paragraph::new(format!(
+                    "logged in as user: {} - points: {}",
+                    u.name(),
+                    points
+                ))
+                .block(Block::bordered())
+                .style(HIGHLIGHT_COLOR),
+                user_bar,
+            );
+            f.render_widget(
+                Block::bordered().title_top(title).style(HIGHLIGHT_COLOR),
+                body,
+            );
+            body.inner(Margin::new(1, 1))
+        }
+    }
 }
 
 pub trait Screen {
     fn handle_input(&mut self, key: (KeyCode, KeyModifiers)) -> Option<Box<dyn Screen>>;
     fn render(&mut self, f: &mut Frame);
-}
-
-#[derive(Clone, Copy, Default)]
-pub enum ScreenType {
-    #[default]
-    Register,
-    Login,
 }

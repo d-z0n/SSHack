@@ -1,18 +1,13 @@
 use ratatui::{
-    crossterm::{
-        event::{KeyCode, KeyModifiers},
-        style::Color,
-    },
-    layout::{Constraint, Layout, Margin},
-    style::Style,
+    crossterm::event::{KeyCode, KeyModifiers},
+    layout::{Constraint, Layout},
     widgets::{Block, Paragraph},
 };
 
 use crate::screens::{
-    self,
     login::LoginScreen,
     register::RegisterScreen,
-    screen::{draw_screen_border, Screen, HIGHLIGHT_COLOR, STANDARD_COLOR},
+    screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
 };
 
 #[derive(Default)]
@@ -35,7 +30,8 @@ impl Screen for HomeScreen {
             f,
             "HOME",
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER>",
-                None
+            None,
+            None,
         );
         let [_, col, _] = Layout::horizontal([
             Constraint::Fill(1),

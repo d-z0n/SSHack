@@ -1,20 +1,16 @@
 use ratatui::{
-    crossterm::{
-        event::{KeyCode, KeyModifiers},
-        style::Color,
-    },
-    layout::{Constraint, Layout, Margin},
-    style::Style,
+    crossterm::event::{KeyCode, KeyModifiers},
+    layout::{Constraint, Layout},
     widgets::{Block, Paragraph},
 };
 
 use crate::{
+    database,
     screens::{
         browse::BrowseScreen,
         home::HomeScreen,
         screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
     },
-    database,
 };
 
 #[derive(Default)]
@@ -22,7 +18,7 @@ pub struct LoginScreen {
     username: String,
     password: String,
     selected: u8,
-    error: Option<String>
+    error: Option<String>,
 }
 
 impl Screen for LoginScreen {
@@ -46,7 +42,8 @@ impl Screen for LoginScreen {
             f,
             "LOGIN",
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - GO BACK: <ESC> - SUBMIT: <ENTER>",
-            self.error.as_deref()
+            self.error.as_deref(),
+            None,
         );
         let [_, col, _] = Layout::horizontal([
             Constraint::Fill(1),
@@ -89,7 +86,7 @@ impl LoginScreen {
     fn submit(&mut self) -> Option<Box<dyn Screen>> {
         if self.selected == 1 {
             match database::User::login(&self.username, &self.password) {
-                Ok(u) => {return Some(Box::new(BrowseScreen::new(u)))},
+                Ok(u) => return Some(Box::new(BrowseScreen::new(u))),
                 Err(e) => self.error = Some(e.to_string()),
             }
             // TODO: error message
