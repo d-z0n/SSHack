@@ -25,9 +25,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     database::create_missing_db();
     let args = Args::parse();
     match args.command {
-        Commands::Run => {
-            let mut server = AppServer::new();
-            server.run().await.expect("Failed running server");
+        Commands::Run { local } => {
+            if !local {
+                let mut server = AppServer::new();
+                server.run().await.expect("Failed running server");
+            } else {
+                let mut term = ratatui::init();
+                let res = app(&mut term);
+                ratatui::restore();
+                return res;
+            }
         }
         Commands::Flags { command } => command.run(),
     }
@@ -151,7 +158,7 @@ impl AppServer {
         tokio::spawn(async move {
             loop {
                 for (_, (terminal, app)) in clients.lock().await.iter_mut() {
-                    terminal.draw(|f| {
+                    _ = terminal.draw(|f| {
                         app.render(f);
                     });
                 }
@@ -223,7 +230,7 @@ impl Handler for AppServer {
         match data {
             d => {
                 if let Some(ke) =
-                    terminput::Event::parse_from(d).with_context(|| "could not pare key")?
+                    terminput::Event::parse_from(d).with_context(|| "could not parse key")?
                 {
                     match terminput_crossterm::to_crossterm(ke)? {
                         Event::Key(k) => match (k.code, k.modifiers) {

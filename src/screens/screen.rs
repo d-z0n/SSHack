@@ -30,22 +30,16 @@ pub fn draw_screen_border(
     user: Option<&User>,
 ) -> Rect {
     let area = f.area();
-    let [body, command_bar] =
-        Layout::vertical([Constraint::Fill(1), Constraint::Length(3)]).areas(area);
+    let [body, command_bar, error_bar] = Layout::vertical([
+        Constraint::Fill(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+    ])
+    .areas(area);
     if let Some(e) = error {
-        f.render_widget(
-            Paragraph::new(e).block(Block::bordered().title_top("ERROR").style(ERROR_COLOR)),
-            command_bar,
-        );
+        f.render_widget(Paragraph::new(e), error_bar);
     } else {
-        f.render_widget(
-            Paragraph::new(Text::styled(commands, STANDARD_COLOR)).block(
-                Block::bordered()
-                    .title_top("COMMANDS")
-                    .style(HIGHLIGHT_COLOR),
-            ),
-            command_bar,
-        );
+        f.render_widget(Text::styled(commands, STANDARD_COLOR), command_bar);
     }
 
     match user {

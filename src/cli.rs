@@ -18,7 +18,10 @@ pub struct Args {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Run the server (WIP)
-    Run,
+    Run {
+        #[arg(short, long)]
+        local: bool,
+    },
     /// Add/Delete/List flags
     ///  (should be used before ctf starts as it will change flag id's and hence remove solves)
     // TODO: fix this
