@@ -1,25 +1,27 @@
 use ratatui::{
     crossterm::event::{KeyCode, KeyModifiers},
     layout::{Constraint, Layout},
+    style::Style,
     widgets::{Block, Paragraph},
 };
 
 use crate::{
+    conf::Conf,
     database,
     screens::{
         browse::BrowseScreen,
         home::HomeScreen,
-        screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
+        screen::{Screen, draw_screen_border},
     },
 };
 
-#[derive(Default)]
 pub struct RegisterScreen {
     username: String,
     password: String,
     confirm: String,
     selected: u8,
     error: Option<String>,
+    conf: Conf,
 }
 
 impl Screen for RegisterScreen {
@@ -34,7 +36,7 @@ impl Screen for RegisterScreen {
             (KeyCode::Char(c), _) => self.write_char(c),
             (KeyCode::Tab, _) | (KeyCode::Down, _) => self.focus_next(),
             (KeyCode::BackTab, KeyModifiers::SHIFT) | (KeyCode::Up, _) => self.focus_prev(),
-            (KeyCode::Esc, _) => return Some(Box::new(HomeScreen::default())),
+            (KeyCode::Esc, _) => return Some(Box::new(HomeScreen::new(self.conf.clone()))),
             (KeyCode::Backspace, _) => self.delete(),
             _ => (),
         };
@@ -47,6 +49,7 @@ impl Screen for RegisterScreen {
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - GO BACK: <ESC> - SUBMIT: <ENTER>",
             self.error.as_deref(),
             None,
+            &self.conf,
         );
 
         let [_, col, _] = Layout::horizontal([
@@ -65,8 +68,12 @@ impl Screen for RegisterScreen {
         .areas(col);
 
         let color = match self.selected {
-            0 => HIGHLIGHT_COLOR,
-            _ => STANDARD_COLOR,
+            0 => Style::new()
+                .fg(self.conf.theme.base08)
+                .bg(self.conf.theme.base00),
+            _ => Style::new()
+                .fg(self.conf.theme.base07)
+                .bg(self.conf.theme.base00),
         };
         f.render_widget(
             Paragraph::new(self.username.as_str())
@@ -74,9 +81,14 @@ impl Screen for RegisterScreen {
                 .style(color),
             user,
         );
+
         let color = match self.selected {
-            1 => HIGHLIGHT_COLOR,
-            _ => STANDARD_COLOR,
+            1 => Style::new()
+                .fg(self.conf.theme.base08)
+                .bg(self.conf.theme.base00),
+            _ => Style::new()
+                .fg(self.conf.theme.base07)
+                .bg(self.conf.theme.base00),
         };
         f.render_widget(
             Paragraph::new("*".repeat(self.password.len()))
@@ -84,9 +96,14 @@ impl Screen for RegisterScreen {
                 .style(color),
             pass,
         );
+
         let color = match self.selected {
-            2 => HIGHLIGHT_COLOR,
-            _ => STANDARD_COLOR,
+            2 => Style::new()
+                .fg(self.conf.theme.base0a)
+                .bg(self.conf.theme.base00),
+            _ => Style::new()
+                .fg(self.conf.theme.base07)
+                .bg(self.conf.theme.base00),
         };
         f.render_widget(
             Paragraph::new("*".repeat(self.confirm.len()))
@@ -98,6 +115,17 @@ impl Screen for RegisterScreen {
 }
 
 impl RegisterScreen {
+    pub fn new(conf: Conf) -> Self {
+        Self {
+            username: String::new(),
+            password: String::new(),
+            confirm: String::new(),
+            selected: 0,
+            error: None,
+            conf,
+        }
+    }
+
     fn submit(&mut self) -> Option<Box<dyn Screen + Send + Sync>> {
         if self.selected == 2 {
             if self.password != self.confirm {
@@ -114,7 +142,7 @@ impl RegisterScreen {
                     return None;
                 }
                 Ok(u) => {
-                    return Some(Box::new(BrowseScreen::new(u)));
+                    return Some(Box::new(BrowseScreen::new(u, self.conf.clone())));
                 }
             }
         }

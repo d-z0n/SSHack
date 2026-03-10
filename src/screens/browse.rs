@@ -4,15 +4,16 @@ use ratatui::{
     Frame,
     crossterm::event::{KeyCode, KeyModifiers},
     layout::{Constraint, Layout, Rect},
-    style::Stylize,
+    style::{Style, Stylize},
     widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
 };
 
 use crate::{
+    conf::Conf,
     database::{Flag, User},
     screens::{
         home::HomeScreen,
-        screen::{ERROR_COLOR, HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
+        screen::{Screen, draw_screen_border},
     },
 };
 
@@ -29,6 +30,7 @@ pub struct BrowseScreen {
     table_state: TableState,
     scroll: u16,
     submission: String,
+    conf: Conf,
 }
 
 impl Screen for BrowseScreen {
@@ -50,12 +52,21 @@ impl Screen for BrowseScreen {
         None
     }
     fn render(&mut self, f: &mut Frame) {
+        let commands = match self.state {
+            BrowseScreenState::Browse => {
+                "QUIT: <CTRL+Q> - LOG OUT: <ESC> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER> - RELOAD: <CTRL+R>"
+            }
+            BrowseScreenState::Submit => {
+                "QUIT: <CTRL+Q> - BROWSE: <ESC> - SCROLL: <UP|DOWN> - SUBMIT FLAG: <ENTER> - RELOAD: <CTRL+R>"
+            }
+        };
         let area = draw_screen_border(
             f,
             "BROWSE",
-            "QUIT: <CTRL+Q> - LOG OUT: <ESC> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER> - RELOAD: <CTRL+R>",
+            commands,
             self.error.as_deref(),
             Some(&self.user),
+            &self.conf,
         );
         let [col1, col2] =
             Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(area);
@@ -96,7 +107,7 @@ impl BrowseScreen {
         None
     }
 
-    pub fn new(user: User) -> Self {
+    pub fn new(user: User, conf: Conf) -> Self {
         let (flags, error) = match Flag::get_all_with_user(&user) {
             Ok(flags) => (flags, None),
             Err(e) => (vec![], Some(e.to_string())),
@@ -109,6 +120,7 @@ impl BrowseScreen {
             error,
             scroll: 0,
             submission: String::new(),
+            conf,
         }
     }
 
@@ -128,7 +140,7 @@ impl BrowseScreen {
 
     fn escape(&mut self) -> Option<Box<dyn Screen + Sync + Send>> {
         match self.state {
-            BrowseScreenState::Browse => Some(Box::new(HomeScreen::default())),
+            BrowseScreenState::Browse => Some(Box::new(HomeScreen::new(self.conf.clone()))),
             BrowseScreenState::Submit => {
                 self.scroll = 0;
                 self.submission.clear();
@@ -159,17 +171,23 @@ impl BrowseScreen {
             .into_iter()
             .map(Cell::from)
             .collect::<Row>()
-            .style(ERROR_COLOR)
+            .fg(self.conf.theme.base08)
+            .bg(self.conf.theme.base00)
             .italic()
             .bold()
             .height(1);
 
-        let rows = self.flags.iter().map(|f| {
+        let rows = self.flags.iter().enumerate().map(|(i, f)| {
             f.row_parts()
                 .into_iter()
                 .map(Cell::from)
                 .collect::<Row>()
-                .style(STANDARD_COLOR)
+                .fg(self.conf.theme.base05)
+                .bg(if i % 2 == 1 {
+                    self.conf.theme.base00
+                } else {
+                    self.conf.theme.base01
+                })
                 .height(1)
         });
 
@@ -184,9 +202,19 @@ impl BrowseScreen {
             ],
         )
         .header(header)
-        .row_highlight_style(HIGHLIGHT_COLOR)
+        .row_highlight_style(
+            Style::new()
+                .fg(self.conf.theme.base05)
+                .bg(self.conf.theme.base03),
+        )
         .highlight_symbol(" >")
-        .block(Block::new().borders(Borders::RIGHT));
+        .block(
+            Block::new().borders(Borders::RIGHT).border_style(
+                Style::new()
+                    .fg(self.conf.theme.base01)
+                    .bg(self.conf.theme.base00),
+            ),
+        );
 
         f.render_stateful_widget(table, a, &mut self.table_state);
     }
@@ -208,13 +236,21 @@ impl BrowseScreen {
         .areas(a);
 
         let style1 = match self.state {
-            BrowseScreenState::Browse => STANDARD_COLOR,
-            BrowseScreenState::Submit => HIGHLIGHT_COLOR,
+            BrowseScreenState::Browse => Style::new()
+                .fg(self.conf.theme.base04)
+                .bg(self.conf.theme.base00),
+            BrowseScreenState::Submit => Style::new()
+                .fg(self.conf.theme.base07)
+                .bg(self.conf.theme.base00),
         };
 
         let style2 = match self.state {
-            BrowseScreenState::Browse => STANDARD_COLOR,
-            BrowseScreenState::Submit => ERROR_COLOR,
+            BrowseScreenState::Browse => Style::new()
+                .fg(self.conf.theme.base04)
+                .bg(self.conf.theme.base00),
+            BrowseScreenState::Submit => Style::new()
+                .fg(self.conf.theme.base08)
+                .bg(self.conf.theme.base00),
         };
 
         let title = Paragraph::new(format!(
@@ -238,7 +274,7 @@ impl BrowseScreen {
         f.render_widget(description_text, description);
 
         let input_box = Paragraph::new(self.submission.as_str())
-            .block(Block::bordered().title_top("Submit Flag").style(style1));
+            .block(Block::bordered().title_top("Submit Flag").style(style2));
 
         f.render_widget(input_box, submission);
 

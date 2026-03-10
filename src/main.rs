@@ -1,23 +1,25 @@
 mod cli;
+mod conf;
 mod database;
-use std::{error::Error, path::PathBuf};
+mod screens;
+mod theme;
+use std::error::Error;
 
 use anyhow::Context;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::{
         self,
-        event::{Event, KeyCode, KeyEvent, KeyModifiers},
+        event::{Event, KeyCode, KeyModifiers},
     },
 };
 
 use crate::{
     cli::{Args, Commands},
+    conf::Conf,
     screens::home::HomeScreen,
 };
-
-mod screens;
 
 // inspired by: https://github.com/Eugeny/russh/blob/main/russh/examples/ratatui_app.rs
 #[tokio::main]
@@ -26,12 +28,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     match args.command {
         Commands::Run { local } => {
+            let conf = Conf::get();
             if !local {
-                let mut server = AppServer::new();
+                let mut server = AppServer::new(conf);
                 server.run().await.expect("Failed running server");
             } else {
                 let mut term = ratatui::init();
-                let res = app(&mut term);
+                let res = app(&mut term, conf);
                 ratatui::restore();
                 return res;
             }
@@ -42,9 +45,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn Error>> {
+fn app(terminal: &mut DefaultTerminal, conf: Conf) -> Result<(), Box<dyn Error>> {
     let mut app = App {
-        screen: Box::new(screens::home::HomeScreen::default()),
+        screen: Box::new(screens::home::HomeScreen::new(conf)),
     };
     loop {
         terminal.draw(|f| app.render(f))?;
@@ -70,9 +73,9 @@ impl App {
         self.screen.render(f)
     }
 
-    fn new() -> Self {
+    fn new(conf: Conf) -> Self {
         Self {
-            screen: Box::new(HomeScreen::default()),
+            screen: Box::new(HomeScreen::new(conf)),
         }
     }
 }
@@ -82,8 +85,6 @@ use std::sync::Arc;
 
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::{Terminal, TerminalOptions, Viewport};
 use russh::keys::ssh_key::rand_core::OsRng;
 use russh::keys::ssh_key::{self, PublicKey};
@@ -143,13 +144,15 @@ impl std::io::Write for TerminalHandle {
 struct AppServer {
     clients: Arc<Mutex<HashMap<usize, (SshTerminal, App)>>>,
     id: usize,
+    conf: Conf,
 }
 
 impl AppServer {
-    pub fn new() -> Self {
+    pub fn new(conf: Conf) -> Self {
         Self {
             clients: Arc::new(Mutex::new(HashMap::new())),
             id: 0,
+            conf,
         }
     }
 
@@ -209,7 +212,7 @@ impl Handler for AppServer {
         };
 
         let terminal = Terminal::with_options(backend, options)?;
-        let app = App::new();
+        let app = App::new(self.conf.clone());
 
         let mut clients = self.clients.lock().await;
         clients.insert(self.id, (terminal, app));

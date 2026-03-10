@@ -1,18 +1,20 @@
 use ratatui::{
     crossterm::event::{KeyCode, KeyModifiers},
     layout::{Constraint, Layout},
+    style::Style,
     widgets::{Block, Paragraph},
 };
 
+use crate::conf::Conf;
 use crate::screens::{
     login::LoginScreen,
     register::RegisterScreen,
-    screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
+    screen::{Screen, draw_screen_border},
 };
 
-#[derive(Default)]
 pub struct HomeScreen {
     selected: u8,
+    conf: Conf,
 }
 
 impl Screen for HomeScreen {
@@ -35,6 +37,7 @@ impl Screen for HomeScreen {
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER>",
             None,
             None,
+            &self.conf,
         );
         let [_, col, _] = Layout::horizontal([
             Constraint::Fill(1),
@@ -51,8 +54,12 @@ impl Screen for HomeScreen {
         .areas(col);
 
         let color = match self.selected {
-            0 => HIGHLIGHT_COLOR,
-            _ => STANDARD_COLOR,
+            0 => Style::new()
+                .fg(self.conf.theme.base08)
+                .bg(self.conf.theme.base00),
+            _ => Style::new()
+                .fg(self.conf.theme.base07)
+                .bg(self.conf.theme.base00),
         };
         f.render_widget(
             Paragraph::new("LOGIN")
@@ -60,9 +67,14 @@ impl Screen for HomeScreen {
                 .style(color),
             login,
         );
+
         let color = match self.selected {
-            1 => HIGHLIGHT_COLOR,
-            _ => STANDARD_COLOR,
+            1 => Style::new()
+                .fg(self.conf.theme.base08)
+                .bg(self.conf.theme.base00),
+            _ => Style::new()
+                .fg(self.conf.theme.base07)
+                .bg(self.conf.theme.base00),
         };
         f.render_widget(
             Paragraph::new("REGISTER")
@@ -74,10 +86,13 @@ impl Screen for HomeScreen {
 }
 
 impl HomeScreen {
+    pub fn new(conf: Conf) -> Self {
+        Self { selected: 0, conf }
+    }
     fn submit(&mut self) -> Option<Box<dyn Screen + Sync + Send>> {
         match self.selected {
-            0 => Some(Box::new(LoginScreen::default())),
-            1 => Some(Box::new(RegisterScreen::default())),
+            0 => Some(Box::new(LoginScreen::new(self.conf.clone()))),
+            1 => Some(Box::new(RegisterScreen::new(self.conf.clone()))),
             _ => None,
         }
     }

@@ -1,26 +1,11 @@
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyModifiers};
-use ratatui::layout::{Constraint, Layout, Margin, Rect};
-use ratatui::style::{Color, Style};
-use ratatui::text::Text;
+use ratatui::layout::{Constraint, Layout, Rect};
+use ratatui::style::Stylize;
 use ratatui::widgets::{Block, Paragraph};
 
+use crate::conf::Conf;
 use crate::database::User;
-
-const BG_HEX: u32 = 0x2D2D2A;
-const FG_HEX: u32 = 0x3F5E5A;
-const HL_HEX: u32 = 0x20FC8F;
-const ER_HEX: u32 = 0xFFEC8F;
-
-pub const STANDARD_COLOR: Style = Style::new()
-    .bg(Color::from_u32(BG_HEX))
-    .fg(Color::from_u32(FG_HEX));
-pub const HIGHLIGHT_COLOR: Style = Style::new()
-    .bg(Color::from_u32(BG_HEX))
-    .fg(Color::from_u32(HL_HEX));
-pub const ERROR_COLOR: Style = Style::new()
-    .bg(Color::from_u32(BG_HEX))
-    .fg(Color::from_u32(ER_HEX));
 
 pub fn draw_screen_border(
     f: &mut Frame,
@@ -28,49 +13,76 @@ pub fn draw_screen_border(
     commands: &'static str,
     error: Option<&str>,
     user: Option<&User>,
+    conf: &Conf,
 ) -> Rect {
     let area = f.area();
-    let [body, command_bar, error_bar] = Layout::vertical([
+    let [top_bar, body, command_bar, error_bar] = Layout::vertical([
+        Constraint::Length(1),
         Constraint::Fill(1),
         Constraint::Length(1),
         Constraint::Length(1),
     ])
     .areas(area);
     if let Some(e) = error {
-        f.render_widget(Paragraph::new(e), error_bar);
+        f.render_widget(
+            Paragraph::new(e)
+                .fg(ratatui::style::Color::Red)
+                .bold()
+                .bg(conf.theme.base00),
+            error_bar,
+        );
     } else {
-        f.render_widget(Text::styled(commands, STANDARD_COLOR), command_bar);
+        f.render_widget(Paragraph::new("").bg(conf.theme.base00), error_bar);
     }
+    f.render_widget(
+        Paragraph::new(commands)
+            .fg(conf.theme.base04)
+            .bg(conf.theme.base01),
+        command_bar,
+    );
 
-    match user {
-        None => {
-            f.render_widget(
-                Block::bordered().title_top(title).style(HIGHLIGHT_COLOR),
-                body,
-            );
-            body.inner(Margin::new(1, 1))
-        }
-        Some(u) => {
-            let [user_bar, body] =
-                Layout::vertical([Constraint::Length(3), Constraint::Fill(1)]).areas(body);
-            let points = u.points().to_string();
-            f.render_widget(
-                Paragraph::new(format!(
-                    "logged in as user: {} - points: {}",
-                    u.name(),
-                    points
-                ))
-                .block(Block::bordered())
-                .style(HIGHLIGHT_COLOR),
-                user_bar,
-            );
-            f.render_widget(
-                Block::bordered().title_top(title).style(HIGHLIGHT_COLOR),
-                body,
-            );
-            body.inner(Margin::new(1, 1))
-        }
+    // fill background
+    f.render_widget(Block::new().bg(conf.theme.base00), body);
+    f.render_widget(Block::new().bg(conf.theme.base01), top_bar);
+
+    let [title_rect, rest] = Layout::horizontal([
+        Constraint::Length(title.len() as u16 + 2), // plus 2 for padding
+        Constraint::Fill(1),
+    ])
+    .areas(top_bar);
+
+    f.render_widget(
+        Paragraph::new(format!(" {} ", title))
+            .fg(conf.theme.base05)
+            .bg(conf.theme.base02),
+        title_rect,
+    );
+
+    if let Some(u) = user {
+        let points = format!(" {} points ", u.points().to_string());
+        let username = format!(" {} ", u.name());
+
+        let [_, user_rect, point_rect] = Layout::horizontal([
+            Constraint::Fill(1),
+            Constraint::Length(username.len() as u16),
+            Constraint::Length(points.len() as u16),
+        ])
+        .areas(rest);
+
+        f.render_widget(
+            Paragraph::new(username)
+                .fg(conf.theme.base05)
+                .bg(conf.theme.base02),
+            user_rect,
+        );
+        f.render_widget(
+            Paragraph::new(points)
+                .fg(conf.theme.base05)
+                .bg(conf.theme.base01),
+            point_rect,
+        );
     }
+    body
 }
 
 pub trait Screen {

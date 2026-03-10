@@ -1,24 +1,26 @@
 use ratatui::{
     crossterm::event::{KeyCode, KeyModifiers},
     layout::{Constraint, Layout},
+    style::Style,
     widgets::{Block, Paragraph},
 };
 
 use crate::{
+    conf::Conf,
     database,
     screens::{
         browse::BrowseScreen,
         home::HomeScreen,
-        screen::{HIGHLIGHT_COLOR, STANDARD_COLOR, Screen, draw_screen_border},
+        screen::{Screen, draw_screen_border},
     },
 };
 
-#[derive(Default)]
 pub struct LoginScreen {
     username: String,
     password: String,
     selected: u8,
     error: Option<String>,
+    conf: Conf,
 }
 
 impl Screen for LoginScreen {
@@ -35,7 +37,7 @@ impl Screen for LoginScreen {
             (KeyCode::Tab, _) | (KeyCode::Down, _) => self.focus_next(),
             (KeyCode::BackTab, KeyModifiers::SHIFT) | (KeyCode::Up, _) => self.focus_prev(),
             (KeyCode::Backspace, _) => self.delete(),
-            (KeyCode::Esc, _) => return Some(Box::new(HomeScreen::default())),
+            (KeyCode::Esc, _) => return Some(Box::new(HomeScreen::new(self.conf.clone()))),
             _ => (),
         };
         None
@@ -47,6 +49,7 @@ impl Screen for LoginScreen {
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - GO BACK: <ESC> - SUBMIT: <ENTER>",
             self.error.as_deref(),
             None,
+            &self.conf,
         );
         let [_, col, _] = Layout::horizontal([
             Constraint::Fill(1),
@@ -63,8 +66,12 @@ impl Screen for LoginScreen {
         .areas(col);
 
         let color = match self.selected {
-            0 => HIGHLIGHT_COLOR,
-            _ => STANDARD_COLOR,
+            0 => Style::new()
+                .fg(self.conf.theme.base08)
+                .bg(self.conf.theme.base00),
+            _ => Style::new()
+                .fg(self.conf.theme.base07)
+                .bg(self.conf.theme.base00),
         };
         f.render_widget(
             Paragraph::new(self.username.as_str())
@@ -72,9 +79,14 @@ impl Screen for LoginScreen {
                 .style(color),
             user,
         );
+
         let color = match self.selected {
-            1 => HIGHLIGHT_COLOR,
-            _ => STANDARD_COLOR,
+            1 => Style::new()
+                .fg(self.conf.theme.base08)
+                .bg(self.conf.theme.base00),
+            _ => Style::new()
+                .fg(self.conf.theme.base07)
+                .bg(self.conf.theme.base00),
         };
         f.render_widget(
             Paragraph::new("*".repeat(self.password.len()))
@@ -86,10 +98,19 @@ impl Screen for LoginScreen {
 }
 
 impl LoginScreen {
+    pub fn new(conf: Conf) -> Self {
+        Self {
+            username: String::new(),
+            password: String::new(),
+            selected: 0,
+            error: None,
+            conf,
+        }
+    }
     fn submit(&mut self) -> Option<Box<dyn Screen + Sync + Send>> {
         if self.selected == 1 {
             match database::User::login(&self.username, &self.password) {
-                Ok(u) => return Some(Box::new(BrowseScreen::new(u))),
+                Ok(u) => return Some(Box::new(BrowseScreen::new(u, self.conf.clone()))),
                 Err(e) => self.error = Some(e.to_string()),
             }
             // TODO: error message
