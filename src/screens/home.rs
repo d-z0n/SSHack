@@ -1,7 +1,8 @@
 use ratatui::{
     crossterm::event::{KeyCode, KeyModifiers},
     layout::{Constraint, Layout},
-    style::Style,
+    style::{Style, Stylize},
+    text::Text,
     widgets::{Block, Paragraph},
 };
 
@@ -39,12 +40,34 @@ impl Screen for HomeScreen {
             None,
             &self.conf,
         );
+
+        let [_, banner_part, body, _] = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Max(self.conf.banner.lines().count() as u16 + 1),
+            Constraint::Length(6), // six lines for login/register box
+            Constraint::Fill(1),
+        ])
+        .areas(area);
+
+        let [_, banner, _] = Layout::horizontal([
+            Constraint::Fill(1),
+            Constraint::Length(self.conf.banner.lines().map(|x| x.len()).max().unwrap_or(0) as u16),
+            Constraint::Fill(1),
+        ])
+        .areas(banner_part);
+        f.render_widget(
+            Paragraph::new(Text::raw(&self.conf.banner))
+                .fg(self.conf.theme.base08)
+                .bg(self.conf.theme.base00),
+            banner,
+        );
+
         let [_, col, _] = Layout::horizontal([
             Constraint::Fill(1),
             Constraint::Fill(2),
             Constraint::Fill(1),
         ])
-        .areas(area);
+        .areas(body);
         let [_, login, register, _] = Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(3),
@@ -58,9 +81,10 @@ impl Screen for HomeScreen {
                 .fg(self.conf.theme.base08)
                 .bg(self.conf.theme.base00),
             _ => Style::new()
-                .fg(self.conf.theme.base07)
+                .fg(self.conf.theme.base05)
                 .bg(self.conf.theme.base00),
         };
+
         f.render_widget(
             Paragraph::new("LOGIN")
                 .block(Block::bordered())
@@ -73,7 +97,7 @@ impl Screen for HomeScreen {
                 .fg(self.conf.theme.base08)
                 .bg(self.conf.theme.base00),
             _ => Style::new()
-                .fg(self.conf.theme.base07)
+                .fg(self.conf.theme.base05)
                 .bg(self.conf.theme.base00),
         };
         f.render_widget(
