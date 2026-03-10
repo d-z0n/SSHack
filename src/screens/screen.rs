@@ -9,7 +9,8 @@ use crate::database::User;
 
 pub fn draw_screen_border(
     f: &mut Frame,
-    title: &'static str,
+    titles: Vec<&'static str>,
+    current_title: usize,
     commands: &'static str,
     error: Option<&str>,
     user: Option<&User>,
@@ -46,17 +47,33 @@ pub fn draw_screen_border(
     f.render_widget(Block::new().bg(conf.theme.base01), top_bar);
 
     let [title_rect, rest] = Layout::horizontal([
-        Constraint::Length(title.len() as u16 + 2), // plus 2 for padding
+        Constraint::Length(titles.iter().map(|x| x.len() + 2).sum::<usize>() as u16), // plus 2 for padding
         Constraint::Fill(1),
     ])
     .areas(top_bar);
 
-    f.render_widget(
-        Paragraph::new(format!(" {} ", title))
-            .fg(conf.theme.base05)
-            .bg(conf.theme.base02),
-        title_rect,
-    );
+    let constraints = titles
+        .iter()
+        .map(|x| Constraint::Length(x.len() as u16 + 2));
+
+    let parts = Layout::horizontal(constraints).split(title_rect);
+
+    for (i, title) in titles.into_iter().enumerate() {
+        f.render_widget(
+            Paragraph::new(format!(" {} ", title))
+                .fg(if current_title == i {
+                    conf.theme.base05
+                } else {
+                    conf.theme.base04
+                })
+                .bg(if current_title == i {
+                    conf.theme.base02
+                } else {
+                    conf.theme.base01
+                }),
+            parts[i],
+        );
+    }
 
     if let Some(u) = user {
         let points = format!(" {} points ", u.points().to_string());

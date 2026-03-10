@@ -11,23 +11,22 @@ impl Conf {
         Self {
             theme: Theme::new("colors"),
             banner: r#"
-                                    ,       
-                                    Et      
-         .        .,                E#t     
-        ;W       ,Wt                E##t    
-       f#E      i#D.  GEEEEEEEL     E#W#t   
-     .E#f      f#f    ,;;L#K;;.     E#tfL.  
-    iWW;     .D#i        t#E        E#t     
-   L##Lffi  :KW,         t#E     ,ffW#Dffj. 
-  tLLG##L   t#f          t#E      ;LW#ELLLf.
-    ,W#i     ;#G         t#E        E#t     
-   j#E.       :KE.       t#E        E#t     
- .D#j          .DW:      t#E        E#t     
-,WK,             L#,     t#E        E#t     
-EG.               jt      fE        E#t     
-,                          :        ;#t     
-                                     :;    "#
-                .to_string(),
+         .           .                                    .,  G:      
+        ;W          ;W  .    .                           ,Wt  E#,    :
+       f#E         f#E  Di   Dt                 ..      i#D.  E#t  .GE
+     .E#f        .E#f   E#i  E#i               ;W,     f#f    E#t j#K;
+    iWW;        iWW;    E#t  E#t              j##,   .D#i     E#GK#f  
+   L##Lffi     L##Lffi  E#t  E#t             G###,  :KW,      E##D.   
+  tLLG##L     tLLG##L   E########f.        :E####,  t#f       E##Wi   
+    ,W#i        ,W#i    E#j..K#j...       ;W#DG##,   ;#G      E#jL#D: 
+   j#E.        j#E.     E#t  E#t         j###DW##,    :KE.    E#t ,K#j
+ .D#j        .D#j       E#t  E#t        G##i,,G##,     .DW:   E#t   jD
+,WK,        ,WK,        f#t  f#t      :K#K:   L##,       L#,  j#t     
+EG.         EG.          ii   ii     ;##D.    L##,        jt   ,;     
+,           ,                        ,,,      .,,                     
+                                                                        
+                "#
+            .to_string(),
         }
     }
 }

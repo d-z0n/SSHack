@@ -45,7 +45,7 @@ impl Screen for BrowseScreen {
             (KeyCode::Tab, _) | (KeyCode::Down, _) => self.focus_next(),
             (KeyCode::BackTab, KeyModifiers::SHIFT) | (KeyCode::Up, _) => self.focus_prev(),
             (KeyCode::Backspace, _) => self.erase(),
-            (KeyCode::Char('r'), _) => return self.reload(),
+            (KeyCode::Char('r'), KeyModifiers::CONTROL) => return self.reload(),
             (KeyCode::Char(c), _) => self.write_char(c),
             _ => (),
         };
@@ -62,7 +62,8 @@ impl Screen for BrowseScreen {
         };
         let area = draw_screen_border(
             f,
-            "BROWSE",
+            vec!["BROWSE", "LEADERBOARD"],
+            0,
             commands,
             self.error.as_deref(),
             Some(&self.user),

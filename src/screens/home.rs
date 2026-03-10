@@ -34,7 +34,8 @@ impl Screen for HomeScreen {
     fn render(&mut self, f: &mut ratatui::Frame) {
         let area = draw_screen_border(
             f,
-            "HOME",
+            vec!["HOME"],
+            0,
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER>",
             None,
             None,

@@ -45,7 +45,8 @@ impl Screen for RegisterScreen {
     fn render(&mut self, f: &mut ratatui::Frame) {
         let area = draw_screen_border(
             f,
-            "REGISTER",
+            vec!["REGISTER"],
+            0,
             "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - GO BACK: <ESC> - SUBMIT: <ENTER>",
             self.error.as_deref(),
             None,
