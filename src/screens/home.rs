@@ -36,7 +36,7 @@ impl Screen for HomeScreen {
             f,
             vec!["HOME"],
             0,
-            "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER>",
+            "QUIT<CTRL+Q> NAVIGATE<UP|DOWN|TAB> SELECT<ENTER>",
             None,
             None,
             &self.conf,

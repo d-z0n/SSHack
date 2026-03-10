@@ -1,6 +1,6 @@
 use std::{env, error::Error, io::ErrorKind};
 
-use rusqlite::Connection;
+use rusqlite::{Connection, fallible_iterator::FallibleIterator};
 use serde::{Deserialize, Serialize};
 
 const DB_FILE: &str = "db.db";
@@ -36,6 +36,7 @@ pub fn create_missing_db() {
         .expect("could not create table solved");
 }
 
+#[derive(Clone)]
 pub struct User {
     name: String,
     id: i32,
@@ -52,8 +53,30 @@ impl User {
         let _ = s.reload();
         s
     }
+
+    pub fn row_parts(&self) -> [&str; 2] {
+        [&self.name, format!("{}", self.points).leak()]
+    }
+
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn get_all() -> Result<Vec<User>, Box<dyn Error>> {
+        let conn = conn();
+        const QUERY: &str = "SELECT id,name FROM users";
+
+        let mut stmt = conn.prepare(QUERY)?;
+        let rows = stmt.query([])?;
+
+        let users: Vec<User> = rows
+            .map(|x| {
+                let mut user = User::new(x.get(1)?, x.get(0)?);
+                _ = user.reload();
+                Ok(user)
+            })
+            .collect()?;
+        Ok(users)
     }
 
     pub fn register_user(name: &String, password: &String) -> Result<User, Box<dyn Error>> {

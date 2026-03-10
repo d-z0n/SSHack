@@ -9,7 +9,7 @@ use crate::{
     conf::Conf,
     database,
     screens::{
-        browse::BrowseScreen,
+        flags::BrowseScreen,
         home::HomeScreen,
         screen::{Screen, draw_screen_border},
     },
@@ -47,7 +47,7 @@ impl Screen for RegisterScreen {
             f,
             vec!["REGISTER"],
             0,
-            "QUIT: <CTRL+Q> - NAVIGATE: <UP|DOWN|TAB> - GO BACK: <ESC> - SUBMIT: <ENTER>",
+            "QUIT<CTRL+Q> NAVIGATE<UP|DOWN|TAB> GO BACK<ESC> SUBMIT<ENTER>",
             self.error.as_deref(),
             None,
             &self.conf,

@@ -13,6 +13,7 @@ use crate::{
     database::{Flag, User},
     screens::{
         home::HomeScreen,
+        leaderboard::LeaderboardScreen,
         screen::{Screen, draw_screen_border},
     },
 };
@@ -46,6 +47,12 @@ impl Screen for BrowseScreen {
             (KeyCode::BackTab, KeyModifiers::SHIFT) | (KeyCode::Up, _) => self.focus_prev(),
             (KeyCode::Backspace, _) => self.erase(),
             (KeyCode::Char('r'), KeyModifiers::CONTROL) => return self.reload(),
+            (KeyCode::Right, KeyModifiers::CONTROL) => {
+                return Some(Box::new(LeaderboardScreen::new(
+                    Some(self.user.clone()),
+                    self.conf.clone(),
+                )));
+            }
             (KeyCode::Char(c), _) => self.write_char(c),
             _ => (),
         };
@@ -54,15 +61,15 @@ impl Screen for BrowseScreen {
     fn render(&mut self, f: &mut Frame) {
         let commands = match self.state {
             BrowseScreenState::Browse => {
-                "QUIT: <CTRL+Q> - LOG OUT: <ESC> - NAVIGATE: <UP|DOWN|TAB> - SELECT: <ENTER> - RELOAD: <CTRL+R>"
+                "QUIT<CTRL+Q> LOG OUT<ESC> NAV<UP|DOWN|TAB> SELECT<ENTER> RLOAD<CTRL+R> NAV TABS<CTRL+LEFT|RIGHT>"
             }
             BrowseScreenState::Submit => {
-                "QUIT: <CTRL+Q> - BROWSE: <ESC> - SCROLL: <UP|DOWN> - SUBMIT FLAG: <ENTER> - RELOAD: <CTRL+R>"
+                "QUIT<CTRL+Q> BROWSE<ESC> SCROLL<UP|DOWN> SUBMIT FLAG<ENTER> RLOAD<CTRL+R> NAV TABS<CTRL+LEFT|RIGHT>"
             }
         };
         let area = draw_screen_border(
             f,
-            vec!["BROWSE", "LEADERBOARD"],
+            vec!["FLAGS", "LEADERBOARD"],
             0,
             commands,
             self.error.as_deref(),
