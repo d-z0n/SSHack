@@ -73,7 +73,7 @@ impl Screen for RegisterScreen {
                 .fg(self.conf.theme.base08)
                 .bg(self.conf.theme.base00),
             _ => Style::new()
-                .fg(self.conf.theme.base07)
+                .fg(self.conf.theme.base05)
                 .bg(self.conf.theme.base00),
         };
         f.render_widget(
@@ -88,7 +88,7 @@ impl Screen for RegisterScreen {
                 .fg(self.conf.theme.base08)
                 .bg(self.conf.theme.base00),
             _ => Style::new()
-                .fg(self.conf.theme.base07)
+                .fg(self.conf.theme.base05)
                 .bg(self.conf.theme.base00),
         };
         f.render_widget(
@@ -103,7 +103,7 @@ impl Screen for RegisterScreen {
                 .fg(self.conf.theme.base08)
                 .bg(self.conf.theme.base00),
             _ => Style::new()
-                .fg(self.conf.theme.base07)
+                .fg(self.conf.theme.base05)
                 .bg(self.conf.theme.base00),
         };
         f.render_widget(
