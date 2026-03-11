@@ -7,14 +7,14 @@ const DB_FILE: &str = "db.db";
 
 fn conn() -> Connection {
     let mut path = env::home_dir().expect("no home dir found");
-    path.push(".shacker");
+    path.push(".sshack");
     path.push(DB_FILE);
     Connection::open(path).expect("couldn't open db")
 }
 
 pub fn create_missing_db() {
     let mut path = env::home_dir().expect("no home dir found");
-    path.push(".shacker");
+    path.push(".sshack");
 
     std::fs::create_dir_all(&path).expect("failed to create db file");
 

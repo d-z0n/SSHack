@@ -1,18 +1,15 @@
-use std::error::Error;
-
 use ratatui::{
     Frame,
     crossterm::event::{KeyCode, KeyModifiers},
-    layout::{Constraint, Layout, Rect},
-    style::{Style, Stylize},
-    widgets::{Block, Borders, Cell, ListState, Paragraph, Row, Table, TableState},
+    layout::{Constraint, Rect},
+    style::Stylize,
+    widgets::{Block, Borders, Cell, Row, Table, TableState},
 };
 
 use crate::{
     conf::Conf,
-    database::{Flag, User},
+    database::User,
     screens::{
-        self,
         flags::BrowseScreen,
         home::HomeScreen,
         screen::{Screen, draw_screen_border},
@@ -24,7 +21,6 @@ pub struct LeaderboardScreen {
     users: Vec<User>,
     error: Option<String>,
     conf: Conf,
-    scroll: usize,
     leaderboard: TableState,
 }
 
@@ -76,7 +72,6 @@ impl LeaderboardScreen {
             conf,
             users,
             error: None,
-            scroll: 0,
             leaderboard: TableState::new(),
         }
     }

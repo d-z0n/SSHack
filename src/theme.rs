@@ -1,7 +1,10 @@
+use std::io::Read;
+
 use ratatui::style::Color;
 use serde::Deserialize;
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct Theme {
     pub base00: Color,
     pub base01: Color,
@@ -22,6 +25,7 @@ pub struct Theme {
 }
 
 #[derive(Deserialize)]
+#[allow(non_snake_case)]
 struct ThemeStringRepresentation {
     pub base00: String,
     pub base01: String,
@@ -64,117 +68,37 @@ impl ThemeStringRepresentation {
 }
 
 impl Theme {
-    pub fn new(theme: &str) -> Self {
-        match theme {
-            "nebula" => StandardThemes::Nebula.value(),
-            "onelight" => StandardThemes::Onelight.value(),
-            "gruvbox-dark-hard" => StandardThemes::GruvboxDarkHard.value(),
-            "gruvbox-dark-medium" => StandardThemes::GruvboxDarkMedium.value(),
-            "gruvbox-dark-pale" => StandardThemes::GruvboxDarkPale.value(),
-            "gruvbox-dark-soft" => StandardThemes::GruvboxDarkSoft.value(),
-            "gruvbox-light-hard" => StandardThemes::GruvboxLightHard.value(),
-            "gruvbox-light-medium" => StandardThemes::GruvboxLightMedium.value(),
-            "gruvbox-light-soft" => StandardThemes::GruvboxLightSoft.value(),
-            "nord" => StandardThemes::Nord.value(),
-            "onedark" => StandardThemes::Onedark.value(),
-            "colors" => StandardThemes::Colors.value(),
-            _ => todo!(),
-        }
+    pub fn new(theme: &str) -> Option<Self> {
+        let mut path = std::env::home_dir()?;
+        path.push(".config");
+        path.push("sshack");
+        path.push("themes");
+        path.push(&format!("{}.yaml", theme));
+        let mut f = std::fs::File::open(path).ok()?;
+        let mut content = String::new();
+        f.read_to_string(&mut content).ok()?;
+        let theme_string_repr: ThemeStringRepresentation =
+            serde_yaml_ng::from_str(&content).ok()?;
+        Some(theme_string_repr.theme())
     }
 }
 
-pub enum StandardThemes {
-    Nebula,
-    Onelight,
-    GruvboxDarkHard,
-    GruvboxDarkMedium,
-    GruvboxDarkPale,
-    GruvboxDarkSoft,
-    GruvboxLightHard,
-    GruvboxLightMedium,
-    GruvboxLightSoft,
-    Nord,
-    Onedark,
-    Colors,
-}
-
-impl StandardThemes {
-    fn value(&self) -> Theme {
-        match self {
-            StandardThemes::Nebula => {
-                let string = include_str!("../themes/nebula.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::Onelight => {
-                let string = include_str!("../themes/one-light.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::GruvboxDarkHard => {
-                let string = include_str!("../themes/gruvbox-dark-hard.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::GruvboxDarkMedium => {
-                let string = include_str!("../themes/gruvbox-dark-medium.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::GruvboxDarkPale => {
-                let string = include_str!("../themes/gruvbox-dark-pale.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::GruvboxDarkSoft => {
-                let string = include_str!("../themes/gruvbox-dark-soft.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::GruvboxLightHard => {
-                let string = include_str!("../themes/gruvbox-light-hard.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::GruvboxLightMedium => {
-                let string = include_str!("../themes/gruvbox-light-medium.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::GruvboxLightSoft => {
-                let string = include_str!("../themes/gruvbox-light-soft.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::Nord => {
-                let string = include_str!("../themes/nord.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::Onedark => {
-                let string = include_str!("../themes/onedark.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-            StandardThemes::Colors => {
-                let string = include_str!("../themes/colors.yaml");
-                let theme_string_repr: ThemeStringRepresentation =
-                    serde_yaml_ng::from_str(string).unwrap();
-                theme_string_repr.theme()
-            }
-
-            _ => todo!(),
-        }
-    }
-}
+// Standard Theme (colors.yaml)
+pub const STANDARD_THEME: Theme = Theme {
+    base00: Color::from_u32(0x111111),
+    base01: Color::from_u32(0x333333),
+    base02: Color::from_u32(0x555555),
+    base03: Color::from_u32(0x777777),
+    base04: Color::from_u32(0x999999),
+    base05: Color::from_u32(0xbbbbbb),
+    base06: Color::from_u32(0xdddddd),
+    base07: Color::from_u32(0xffffff),
+    base08: Color::from_u32(0xff4136),
+    base09: Color::from_u32(0xff851b),
+    base0a: Color::from_u32(0xffdc00),
+    base0b: Color::from_u32(0x2ecc40),
+    base0c: Color::from_u32(0x7fdbff),
+    base0d: Color::from_u32(0x0074d9),
+    base0e: Color::from_u32(0xb10dc9),
+    base0f: Color::from_u32(0x85144b),
+};

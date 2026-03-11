@@ -18,7 +18,7 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Run the server (WIP)
+    /// Run the server
     Run {
         #[arg(short, long)]
         local: bool,
