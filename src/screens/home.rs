@@ -52,7 +52,14 @@ impl Screen for HomeScreen {
 
         let [_, banner, _] = Layout::horizontal([
             Constraint::Fill(1),
-            Constraint::Length(self.conf.banner.lines().map(|x| x.len()).max().unwrap_or(0) as u16),
+            Constraint::Length(
+                self.conf
+                    .banner
+                    .lines()
+                    .map(|x| x.chars().count())
+                    .max()
+                    .unwrap_or(0) as u16,
+            ),
             Constraint::Fill(1),
         ])
         .areas(banner_part);

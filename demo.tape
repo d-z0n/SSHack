@@ -2,9 +2,9 @@ Require ssh
 
 Output demo.gif
 
-Set FontSize 21
-Set Width 1000
-Set Height 600
+Set FontSize 20
+Set Width 1800
+Set Height 900
 
 Type 'ssh -p 1337 localhost'
 
