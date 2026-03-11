@@ -6,7 +6,7 @@ Set FontSize 21
 Set Width 1000
 Set Height 600
 
-Type 'ssh -p 1337 localhost -o "stricthostkeychecking=no"'
+Type 'ssh -p 1337 localhost'
 
 Sleep 300ms
 

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::error::Error;
+use std::io::{Read, Write};
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -92,13 +93,20 @@ impl AppServer {
             }
         });
 
+        let key = if let Some(k) = get_key() {
+            k
+        } else {
+            let key =
+                russh::keys::PrivateKey::random(&mut OsRng, ssh_key::Algorithm::Ed25519).unwrap();
+            set_key(&key).unwrap();
+            key
+        };
+
         let config = Config {
             inactivity_timeout: Some(std::time::Duration::from_secs(3600)),
             auth_rejection_time: std::time::Duration::from_secs(3),
             auth_rejection_time_initial: Some(std::time::Duration::from_secs(0)),
-            keys: vec![
-                russh::keys::PrivateKey::random(&mut OsRng, ssh_key::Algorithm::Ed25519).unwrap(),
-            ],
+            keys: vec![key],
             nodelay: true,
             ..Default::default()
         };
@@ -107,6 +115,26 @@ impl AppServer {
             .await?;
         Ok(())
     }
+}
+
+fn get_key() -> Option<ssh_key::PrivateKey> {
+    let mut path = std::env::home_dir()?;
+    path.push(".sshack");
+    path.push("priv_key");
+    let mut file = std::fs::File::open(path).ok()?;
+    let mut content = String::new();
+    file.read_to_string(&mut content).ok()?;
+    ssh_key::PrivateKey::from_openssh(content).ok()
+}
+
+fn set_key(key: &ssh_key::PrivateKey) -> Result<(), Box<dyn Error>> {
+    let mut path = std::env::home_dir().ok_or("could not save file")?;
+    path.push(".sshack");
+    path.push("priv_key");
+    let mut file = std::fs::File::create(path)?;
+    let key = key.to_openssh(ssh_key::LineEnding::LF)?;
+    file.write(key.as_bytes())?;
+    Ok(())
 }
 
 impl Server for AppServer {

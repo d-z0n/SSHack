@@ -34,7 +34,7 @@ Then run the server:
 
 And connect to it from another host using:
 ```
-  ssh -p 1337 <the_server_ip> -o "stricthostkeychecking=no"
+  ssh -p 1337 <the_server_ip>
 ```
 
 
