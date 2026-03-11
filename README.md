@@ -39,10 +39,19 @@ And connect to it from another host using:
 
 
 ## Config
-
 At the moment there are only two configurable values,
 see `config.toml` to see how to use them.
 
 The theme can be the name of any theme file in the themes folder (without .yaml),
 you can also add new themes in `~/.config/sshack/themes` and use them.
 
+## In the plans
+Some things that I am looking into adding right now are:
+ * Groups/Teams
+ * Password guard for private ctfs
+ * Better flag description rendering (highlight code, commands, network addresses)
+ * More configuration (ports, etc)
+ * Tags for flags (categories)
+ * Profile pages
+ * Sort/search/filter for flags
+ * Better loading of flags (not removing solves from users)
