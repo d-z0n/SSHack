@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::theme::Theme;
 
 #[derive(Clone)]
@@ -6,26 +8,23 @@ pub struct Conf {
     pub banner: String,
 }
 
+#[derive(Serialize, Deserialize)]
+struct ConfToml {
+    theme: String,
+    banner: String,
+    port: u32,
+}
+
 impl Conf {
     pub fn get() -> Self {
         Self {
             theme: Theme::new("colors"),
             banner: r#"
-         .           .                                    .,  G:      
-        ;W          ;W  .    .                           ,Wt  E#,    :
-       f#E         f#E  Di   Dt                 ..      i#D.  E#t  .GE
-     .E#f        .E#f   E#i  E#i               ;W,     f#f    E#t j#K;
-    iWW;        iWW;    E#t  E#t              j##,   .D#i     E#GK#f  
-   L##Lffi     L##Lffi  E#t  E#t             G###,  :KW,      E##D.   
-  tLLG##L     tLLG##L   E########f.        :E####,  t#f       E##Wi   
-    ,W#i        ,W#i    E#j..K#j...       ;W#DG##,   ;#G      E#jL#D: 
-   j#E.        j#E.     E#t  E#t         j###DW##,    :KE.    E#t ,K#j
- .D#j        .D#j       E#t  E#t        G##i,,G##,     .DW:   E#t   jD
-,WK,        ,WK,        f#t  f#t      :K#K:   L##,       L#,  j#t     
-EG.         EG.          ii   ii     ;##D.    L##,        jt   ,;     
-,           ,                        ,,,      .,,                     
-                                                                        
-                "#
+   __________ __         __  
+  / __/ __/ // /__ _____/ /__
+ _\ \_\ \/ _  / _ `/ __/  '_/
+/___/___/_//_/\_,_/\__/_/\_\
+"#
             .to_string(),
         }
     }

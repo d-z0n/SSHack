@@ -1,11 +1,11 @@
 use std::error::Error;
 
 use ratatui::{
-    Frame,
     crossterm::event::{KeyCode, KeyModifiers},
     layout::{Constraint, Layout, Rect},
     style::{Style, Stylize},
     widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
+    Frame,
 };
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
     screens::{
         home::HomeScreen,
         leaderboard::LeaderboardScreen,
-        screen::{Screen, draw_screen_border},
+        screen::{draw_screen_border, Screen},
     },
 };
 

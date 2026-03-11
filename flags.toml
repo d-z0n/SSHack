@@ -1,0 +1,44 @@
+[[flag]]
+name = "CTF"
+description = "What is 'CTF' an abbreviation for?"
+flag = "Capture The Flag"
+points = 200
+id = 13
+
+[[flag]]
+name = "Programming"
+description = "What is the best programming language in the world?"
+flag = "rust"
+points = 250
+id = 14
+
+[[flag]]
+name = "Protocol"
+description = """
+What protocol are you using to interact with this application?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(hint: what was the command you typed to get to this application)"""
+flag = "ssh"
+points = 300
+id = 15

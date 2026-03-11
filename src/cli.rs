@@ -1,11 +1,12 @@
 use std::{
     fs::File,
-    io::{BufReader, Read, Write},
+    io::{Read, Write},
     path::PathBuf,
 };
 
 use clap::{Parser, Subcommand};
-use serde_json::from_str;
+use serde::{Deserialize, Serialize};
+use toml::{from_str, to_string};
 
 use crate::database::{self, Flag};
 
@@ -68,6 +69,12 @@ pub enum FlagCommands {
         flag: String,
     },
 }
+
+#[derive(Serialize, Deserialize)]
+struct Flags {
+    flag: Vec<Flag>,
+}
+
 impl FlagCommands {
     pub fn run(&self) {
         match &self {
@@ -98,8 +105,10 @@ impl FlagCommands {
                         Box::new(file)
                     }
                 };
-                let flags = Flag::get_all().unwrap();
-                let flags_string = serde_json::to_string(&flags).unwrap();
+                let flags = Flags {
+                    flag: Flag::get_all().unwrap(),
+                };
+                let flags_string = to_string(&flags).unwrap();
                 file.write_all(flags_string.as_bytes()).unwrap();
             }
             FlagCommands::Load { path } => {
@@ -112,9 +121,9 @@ impl FlagCommands {
                 };
                 let mut content = String::new();
                 file.read_to_string(&mut content).unwrap();
-                let flags: Vec<Flag> = from_str(&content).unwrap();
+                let flags: Flags = from_str(&content).unwrap();
                 database::clear_flags();
-                for flag in flags {
+                for flag in flags.flag {
                     database::create_flag(
                         flag.name(),
                         flag.description(),
