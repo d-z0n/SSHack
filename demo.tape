@@ -2,9 +2,9 @@ Require ssh
 
 Output demo.gif
 
-Set FontSize 20
-Set Width 1400
-Set Height 700
+Set FontSize 21
+Set Width 1000
+Set Height 600
 
 Type 'ssh -p 1337 localhost -o "stricthostkeychecking=no"'
 
@@ -41,31 +41,38 @@ Sleep 1000ms
 Down
 
 # Scroll down to hint
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-Sleep 100ms
+Sleep 50ms
 Down
-
+Sleep 50ms
+Down
+Sleep 50ms
+Down
+Sleep 50ms
+Down
+Sleep 50ms
+Down
 
 Sleep 1000ms
 Type "ssh"
