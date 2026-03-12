@@ -1,11 +1,11 @@
-use std::error::Error;
+use std::{cmp::Ordering, error::Error};
 
 use ratatui::{
-    crossterm::event::{KeyCode, KeyModifiers},
-    layout::{Constraint, Layout, Rect},
-    style::{Style, Stylize},
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
     Frame,
+    crossterm::event::{KeyCode, KeyModifiers},
+    layout::{Constraint, Layout, Margin, Rect},
+    style::{Style, Stylize},
+    widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
 };
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
     screens::{
         home::HomeScreen,
         leaderboard::LeaderboardScreen,
-        screen::{draw_screen_border, Screen},
+        screen::{Screen, draw_screen_border},
     },
 };
 
@@ -31,6 +31,7 @@ pub struct BrowseScreen {
     table_state: TableState,
     scroll: u16,
     submission: String,
+    filter: SearchFilter,
     conf: Conf,
 }
 
@@ -40,6 +41,12 @@ impl Screen for BrowseScreen {
         key: (KeyCode, KeyModifiers),
     ) -> Option<Box<dyn Screen + Sync + Send>> {
         self.error = None;
+        if self.filter.ui_active {
+            if self.filter.handle_input(key) {
+                self.reload();
+            };
+            return None;
+        }
         match key {
             (KeyCode::Enter, _) => return self.submit(),
             (KeyCode::Esc, _) => return self.escape(),
@@ -47,6 +54,7 @@ impl Screen for BrowseScreen {
             (KeyCode::BackTab, KeyModifiers::SHIFT) | (KeyCode::Up, _) => self.focus_prev(),
             (KeyCode::Backspace, _) => self.erase(),
             (KeyCode::Char('r'), KeyModifiers::CONTROL) => return self.reload(),
+            (KeyCode::Char('f'), KeyModifiers::CONTROL) => self.filter.ui_active = true,
             (KeyCode::Right, KeyModifiers::CONTROL) => {
                 return Some(Box::new(LeaderboardScreen::new(
                     Some(self.user.clone()),
@@ -61,7 +69,11 @@ impl Screen for BrowseScreen {
     fn render(&mut self, f: &mut Frame) {
         let commands = match self.state {
             BrowseScreenState::Browse => {
-                "QUIT<CTRL+Q> LOG OUT<ESC> NAV<UP|DOWN|TAB> SELECT<ENTER> RLOAD<CTRL+R> NAV TABS<CTRL+LEFT|RIGHT>"
+                if self.filter.ui_active {
+                    "QUIT<CTRL+Q> GO BACK<ESC> NAV<UP|DOWN|TAB> APPLY<ENTER>"
+                } else {
+                    "QUIT<CTRL+Q> LOG OUT<ESC> NAV<UP|DOWN|TAB> SELECT<ENTER> RLOAD<CTRL+R> NAV TABS<CTRL+LEFT|RIGHT> FILTER<CTRL+F>"
+                }
             }
             BrowseScreenState::Submit => {
                 "QUIT<CTRL+Q> BROWSE<ESC> SCROLL<UP|DOWN> SUBMIT FLAG<ENTER> RLOAD<CTRL+R> NAV TABS<CTRL+LEFT|RIGHT>"
@@ -83,6 +95,9 @@ impl Screen for BrowseScreen {
         if let Err(e) = self.draw_preview(f, col2) {
             self.error = Some(e.to_string());
         };
+        if self.filter.ui_active {
+            self.filter.render(f, area, &self.conf);
+        }
     }
 }
 
@@ -127,6 +142,7 @@ impl BrowseScreen {
             flags,
             error,
             scroll: 0,
+            filter: SearchFilter::new(),
             submission: String::new(),
             conf,
         }
@@ -295,9 +311,142 @@ impl BrowseScreen {
             true
         });
         match Flag::get_all_with_user(&self.user) {
-            Ok(flags) => self.flags = flags,
+            Ok(flags) => match self.filter.search_kind {
+                SearchFilterKind::None => self.flags = flags,
+                SearchFilterKind::Solved(b) => {
+                    self.flags = flags.into_iter().filter(|x| x.solved() == b).collect()
+                }
+                SearchFilterKind::Search(ref s) => {
+                    self.flags = flags
+                        .into_iter()
+                        .filter(|x| x.name().contains(s) || x.description().contains(s))
+                        .collect()
+                }
+            },
             Err(e) => self.error = Some(e.to_string()),
         };
         None
     }
+}
+
+struct SearchFilter {
+    search_kind: SearchFilterKind,
+    ui_active: bool,
+}
+
+impl SearchFilter {
+    fn new() -> Self {
+        Self {
+            search_kind: SearchFilterKind::None,
+            ui_active: false,
+        }
+    }
+
+    fn handle_input(&mut self, key: (KeyCode, KeyModifiers)) -> bool {
+        match key {
+            (KeyCode::Enter, _) => {
+                self.ui_active = false;
+                return true;
+            }
+            (KeyCode::Esc, _) => {
+                self.ui_active = false;
+            }
+            (KeyCode::BackTab, _) => match self.search_kind {
+                SearchFilterKind::None => self.search_kind = SearchFilterKind::Solved(false),
+                SearchFilterKind::Solved(_) => {
+                    self.search_kind = SearchFilterKind::Search(String::new())
+                }
+                SearchFilterKind::Search(_) => self.search_kind = SearchFilterKind::None,
+            },
+            (KeyCode::Tab, _) => match self.search_kind {
+                SearchFilterKind::None => {
+                    self.search_kind = SearchFilterKind::Search(String::new())
+                }
+                SearchFilterKind::Search(_) => self.search_kind = SearchFilterKind::Solved(false),
+
+                SearchFilterKind::Solved(_) => self.search_kind = SearchFilterKind::None,
+            },
+            (KeyCode::Char(c), _) => match self.search_kind {
+                SearchFilterKind::Search(ref mut string) => string.push(c),
+                _ => (),
+            },
+            (KeyCode::Backspace, _) => match self.search_kind {
+                SearchFilterKind::Search(ref mut string) => {
+                    string.pop();
+                }
+                _ => (),
+            },
+            (KeyCode::Left | KeyCode::Right, _) => match self.search_kind {
+                SearchFilterKind::Solved(ref mut toggle) => {
+                    *toggle = !*toggle;
+                }
+                _ => (),
+            },
+            _ => (),
+        }
+        false
+    }
+
+    fn render(&self, f: &mut Frame, area: Rect, conf: &Conf) {
+        let [_, col, _] = Layout::horizontal([Constraint::Fill(1); 3]).areas(area);
+        let [_, row, _] = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(8),
+            Constraint::Fill(1),
+        ])
+        .areas(col);
+        f.render_widget(Clear, row);
+        f.render_widget(
+            Block::bordered()
+                .title("Search")
+                .fg(conf.theme.base05)
+                .bg(conf.theme.base01),
+            row,
+        );
+        let area = row.inner(Margin::new(1, 1));
+        let [_, kind, value, _] = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Fill(1),
+        ])
+        .areas(area);
+        match self.search_kind {
+            SearchFilterKind::None => {
+                f.render_widget(
+                    Paragraph::new("None").block(Block::bordered().title("Kind")),
+                    kind,
+                );
+            }
+            SearchFilterKind::Solved(b) => {
+                f.render_widget(
+                    Paragraph::new("Solved").block(Block::bordered().title("Kind")),
+                    kind,
+                );
+                f.render_widget(
+                    Paragraph::new(format!("{}", b).as_str())
+                        .block(Block::bordered().title("value")),
+                    value,
+                );
+            }
+            SearchFilterKind::Search(ref s) => {
+                f.render_widget(
+                    Paragraph::new("Search").block(Block::bordered().title("Search")),
+                    kind,
+                );
+                f.render_widget(
+                    Paragraph::new(format!("{}", s).as_str())
+                        .block(Block::bordered().title("value"))
+                        .fg(conf.theme.base08),
+                    value,
+                );
+            }
+        }
+    }
+}
+
+enum SearchFilterKind {
+    None,
+    Solved(bool),
+    Search(String),
 }
