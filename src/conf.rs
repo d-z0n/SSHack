@@ -3,24 +3,27 @@ use std::io::Read;
 use serde::{Deserialize, Serialize};
 use toml::from_str;
 
-use crate::theme::{Theme, STANDARD_THEME};
+use crate::theme::{STANDARD_THEME, Theme};
 
 #[derive(Clone)]
 pub struct Conf {
     pub theme: Theme,
     pub banner: String,
+    pub port: u16,
 }
 
 #[derive(Serialize, Deserialize)]
 struct ConfToml {
     theme: String,
     banner: String,
+    port: u16,
 }
 impl ConfToml {
     fn conf(self) -> Option<Conf> {
         Some(Conf {
             theme: Theme::new(&self.theme)?,
             banner: self.banner,
+            port: self.port,
         })
     }
 }
@@ -36,6 +39,7 @@ impl Conf {
 /___/___/_//_/\_,_/\__/_/\_\
 "#
             .to_string(),
+            port: 1337,
         })
     }
 

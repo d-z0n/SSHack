@@ -126,7 +126,8 @@ impl AppServer {
             ..Default::default()
         };
 
-        self.run_on_address(Arc::new(config), ("0.0.0.0", 1337))
+        println!("Running on port {}!", self.conf.port);
+        self.run_on_address(Arc::new(config), ("0.0.0.0", self.conf.port))
             .await?;
         Ok(())
     }
