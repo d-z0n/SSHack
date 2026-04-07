@@ -68,7 +68,7 @@ Some things that I am looking into adding right now are:
  [ ] About page (optional)
  [X] Include SSHack version
  [ ] Improve instructions
- [ ] Fix pasting bug
+ [X] Fix pasting bug
 
 #### v0.1.0 [X]
  [X] Basic tui 

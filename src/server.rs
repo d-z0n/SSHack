@@ -214,39 +214,50 @@ impl Handler for AppServer {
         data: &[u8],
         session: &mut Session,
     ) -> Result<(), Self::Error> {
-        println!("data: {:#?}", data);
         let ctf_client = self.ctf_clients.lock().await.contains_key(&self.id);
         match ctf_client {
             true => {
-                if let Some(ke) =
-                    terminput::Event::parse_from(data).with_context(|| "could not parse key")?
-                {
-                    match terminput_crossterm::to_crossterm(ke)? {
-                        Event::Key(k) => match (k.code, k.modifiers) {
-                            (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
-                                let mut clients = self.ctf_clients.lock().await;
-                                clients.remove(&self.id);
+                let mut current_event = Vec::new();
+                let mut iter = data.iter().peekable();
+                while let Some(b) = iter.next() {
+                    current_event.push(*b);
 
-                                // Restore terminal
-                                let mut data_out = Vec::new();
-                                execute!(data_out, LeaveAlternateScreen, Show)?;
-                                let res = session.handle().data(channel, data_out.into()).await;
-                                if res.is_err() {
-                                    eprintln!("error restoring terminal")
-                                }
+                    if let Some(ke) = terminput::Event::parse_from(&current_event)
+                        .with_context(|| "could not parse key")?
+                    {
+                        if ke.as_key().is_some_and(|x| {
+                            x.code == terminput::KeyCode::Esc && iter.peek().is_some()
+                        }) {
+                            continue;
+                        }
+                        current_event.clear();
+                        match terminput_crossterm::to_crossterm(ke)? {
+                            Event::Key(k) => match (k.code, k.modifiers) {
+                                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
+                                    let mut clients = self.ctf_clients.lock().await;
+                                    clients.remove(&self.id);
 
-                                let _ = session.handle().close(channel).await;
-                            }
-                            k => {
-                                let mut clients = self.ctf_clients.lock().await;
-                                let (_, app) = clients.get_mut(&self.id).unwrap();
-                                if let Some(s) = app.screen.handle_input(Some(k)) {
-                                    app.screen = s;
+                                    // Restore terminal
+                                    let mut data_out = Vec::new();
+                                    execute!(data_out, LeaveAlternateScreen, Show)?;
+                                    let res = session.handle().data(channel, data_out.into()).await;
+                                    if res.is_err() {
+                                        eprintln!("error restoring terminal")
+                                    }
+
+                                    let _ = session.handle().close(channel).await;
                                 }
-                            }
-                        },
-                        _ => (),
-                    };
+                                k => {
+                                    let mut clients = self.ctf_clients.lock().await;
+                                    let (_, app) = clients.get_mut(&self.id).unwrap();
+                                    if let Some(s) = app.screen.handle_input(Some(k)) {
+                                        app.screen = s;
+                                    }
+                                }
+                            },
+                            _ => (),
+                        };
+                    }
                 }
             }
 
