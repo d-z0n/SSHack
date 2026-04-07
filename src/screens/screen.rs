@@ -35,11 +35,26 @@ pub fn draw_screen_border(
     } else {
         f.render_widget(Paragraph::new("").bg(conf.theme.base00), error_bar);
     }
+
+    let version = " SSHack v".to_owned() + env!("CARGO_PKG_VERSION") + " ";
+    let [commands_box, version_box] = Layout::horizontal([
+        Constraint::Fill(1),
+        Constraint::Length(version.len() as u16),
+    ])
+    .areas(command_bar);
+
     f.render_widget(
         Paragraph::new(commands)
             .fg(conf.theme.base04)
             .bg(conf.theme.base01),
-        command_bar,
+        commands_box,
+    );
+
+    f.render_widget(
+        Paragraph::new(version)
+            .fg(conf.theme.base04)
+            .bg(conf.theme.base01),
+        version_box,
     );
 
     // fill background

@@ -1,19 +1,15 @@
-use std::{
-    sync::{Arc, Mutex},
-    time::{Duration, Instant},
-};
+use std::time::Instant;
 
 use ratatui::{
     crossterm::event::{KeyCode, KeyModifiers},
     layout::{Constraint, Layout},
-    style::{Color, Style, Stylize},
+    style::Stylize,
     text::Text,
-    widgets::{Block, Paragraph},
+    widgets::Paragraph,
 };
 use tachyonfx::{
-    CellFilter, Effect, EffectManager, EffectTimer,
-    Interpolation::QuadOut,
-    fx::{self, Direction},
+    CellFilter, Effect, EffectTimer,
+    fx::{self},
 };
 
 use crate::{conf::Conf, screens::flags::BrowseScreen};
@@ -98,25 +94,29 @@ impl Screen for HomeScreen {
 
 impl HomeScreen {
     pub fn new(conf: Conf, key: russh::keys::PublicKey) -> Self {
-        let text1 = fx::slide_in(
-            tachyonfx::Motion::LeftToRight,
-            10,
-            0,
-            conf.theme.base00,
-            EffectTimer::from_ms(500, tachyonfx::Interpolation::QuadInOut),
-        )
-        .with_filter(CellFilter::NonEmpty);
+        let text = if conf.animation {
+            let text1 = fx::slide_in(
+                tachyonfx::Motion::LeftToRight,
+                10,
+                0,
+                conf.theme.base00,
+                EffectTimer::from_ms(500, tachyonfx::Interpolation::QuadInOut),
+            )
+            .with_filter(CellFilter::NonEmpty);
 
-        let text2 = fx::slide_out(
-            tachyonfx::Motion::LeftToRight,
-            10,
-            0,
-            conf.theme.base00,
-            EffectTimer::from_ms(500, tachyonfx::Interpolation::QuadInOut),
-        )
-        .with_filter(CellFilter::NonEmpty);
+            let text2 = fx::slide_out(
+                tachyonfx::Motion::LeftToRight,
+                10,
+                0,
+                conf.theme.base00,
+                EffectTimer::from_ms(500, tachyonfx::Interpolation::QuadInOut),
+            )
+            .with_filter(CellFilter::NonEmpty);
 
-        let text = fx::sequence(&[text1, fx::sleep(1000), text2]);
+            fx::sequence(&[text1, fx::sleep(1000), text2])
+        } else {
+            fx::sleep(1000)
+        };
 
         Self {
             conf,

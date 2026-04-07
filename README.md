@@ -55,3 +55,29 @@ Some things that I am looking into adding right now are:
  * Profile pages
  * Sort/search/filter for flags (filter draft done)
  * Better loading of flags (not removing solves from users)
+
+## Development
+
+### v0.x.x
+
+#### v.0.2.0 [ ]
+ [X] File download for challanges over sftp
+ [ ] Teams (optional)
+ [ ] Password protected ctfs (optional)
+ [X] Make animations optional
+ [ ] About page (optional)
+ [X] Include SSHack version
+ [ ] Improve instructions
+
+#### v0.1.0 [X]
+ [X] Basic tui 
+ [X] Basic management cli
+ [X] Basic config file
+ [X] SSH server
+ [X] Authentication using public key
+ [X] Browsing and submitting flags
+ [X] Leaderboard
+ [X] Basic filters
+ [X] Basic animated banner
+
+

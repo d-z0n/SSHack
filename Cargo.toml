@@ -9,6 +9,7 @@ clap = { version = "4.5.60", features = ["derive"] }
 ratatui = "0.30.0"
 rusqlite = "0.38.0"
 russh = "0.57.1"
+russh-sftp = "2.1.1"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_yaml_ng = "0.10.0"
 tachyonfx = { version = "0.25.0", features = ["sendable"] }

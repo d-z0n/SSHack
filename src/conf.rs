@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use toml::from_str;
 
 use crate::theme::{STANDARD_THEME, Theme};
@@ -10,13 +10,17 @@ pub struct Conf {
     pub theme: Theme,
     pub banner: String,
     pub port: u16,
+    pub animation: bool,
+    pub password: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 struct ConfToml {
     theme: String,
     banner: String,
     port: u16,
+    animation: Option<bool>,
+    password: Option<String>,
 }
 impl ConfToml {
     fn conf(self) -> Option<Conf> {
@@ -24,6 +28,8 @@ impl ConfToml {
             theme: Theme::new(&self.theme)?,
             banner: self.banner,
             port: self.port,
+            animation: self.animation.unwrap_or(true),
+            password: self.password,
         })
     }
 }
@@ -40,6 +46,8 @@ impl Conf {
 "#
             .to_string(),
             port: 1337,
+            animation: true,
+            password: None,
         })
     }
 

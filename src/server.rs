@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -9,16 +10,16 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::cursor::{Hide, Show};
 use ratatui::crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::crossterm::execute;
-use ratatui::crossterm::terminal::{Clear, EnterAlternateScreen, LeaveAlternateScreen};
+use ratatui::crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use ratatui::layout::Rect;
 use ratatui::{Terminal, TerminalOptions, Viewport};
 use russh::keys::ssh_key::rand_core::OsRng;
 use russh::keys::ssh_key::{self, PublicKey};
 use russh::server::*;
 use russh::{Channel, ChannelId, Pty};
+use russh_sftp::protocol::{File, FileAttributes, Name, Status, StatusCode, Version};
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
-use tokio::task::yield_now;
 
 use crate::App;
 use crate::conf::Conf;
@@ -72,24 +73,26 @@ impl std::io::Write for TerminalHandle {
 
 #[derive(Clone)]
 pub struct AppServer {
-    clients: Arc<Mutex<HashMap<usize, (SshTerminal, App)>>>,
+    ctf_clients: Arc<Mutex<HashMap<usize, (SshTerminal, App)>>>,
+    new_channels: Arc<Mutex<HashMap<ChannelId, Channel<Msg>>>>,
     id: usize,
     conf: Conf,
-    key: Arc<Mutex<Option<russh::keys::PublicKey>>>,
+    key: Option<russh::keys::PublicKey>,
 }
 
 impl AppServer {
     pub fn new(conf: Conf) -> Self {
         Self {
-            clients: Arc::new(Mutex::new(HashMap::new())),
+            ctf_clients: Arc::new(Mutex::new(HashMap::new())),
             id: 0,
-            key: Arc::new(Mutex::new(None)),
+            key: None,
+            new_channels: Arc::new(Mutex::new(HashMap::new())),
             conf,
         }
     }
 
     pub async fn run(&mut self) -> Result<(), Box<dyn Error>> {
-        let clients = self.clients.clone();
+        let clients = self.ctf_clients.clone();
         // By introducing a interval we put a cap on the rendering rate whichhelps us reduce the bandwidth used over ssh, increasing performance.
         let mut interval = tokio::time::interval(Duration::from_millis(1000 / 60));
         tokio::spawn(async move {
@@ -168,33 +171,53 @@ impl Handler for AppServer {
     async fn channel_open_session(
         &mut self,
         channel: Channel<Msg>,
-        session: &mut Session,
+        _session: &mut Session,
     ) -> Result<bool, Self::Error> {
-        let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
+        // let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
 
-        let backend = CrosstermBackend::new(terminal_handle);
+        // let backend = CrosstermBackend::new(terminal_handle);
 
-        // the correct viewport area will be set when the client request a pty
-        let options = TerminalOptions {
-            viewport: Viewport::Fixed(Rect::default()),
-        };
+        // // the correct viewport area will be set when the client request a pty
+        // let options = TerminalOptions {
+        //     viewport: Viewport::Fixed(Rect::default()),
+        // };
 
-        let terminal = Terminal::with_options(backend, options)?;
-        let key = self.key.lock().await;
-        let app = App::new(
-            self.conf.clone(),
-            key.clone().ok_or(anyhow!("no public key"))?,
-        );
+        // let terminal = Terminal::with_options(backend, options)?;
+        // let key = self.key.lock().await;
+        // let app = App::new(
+        //     self.conf.clone(),
+        //     key.clone().ok_or(anyhow!("no public key"))?,
+        // );
 
-        let mut clients = self.clients.lock().await;
-        clients.insert(self.id, (terminal, app));
+        // let mut clients = self.ctf_clients.lock().await;
+        // clients.insert(self.id, (terminal, app));
+        self.new_channels.lock().await.insert(channel.id(), channel);
 
         Ok(true)
     }
 
     async fn auth_publickey(&mut self, _: &str, key: &PublicKey) -> Result<Auth, Self::Error> {
-        *self.key.lock().await = Some(key.clone());
+        self.key = Some(key.clone());
         Ok(Auth::Accept)
+    }
+
+    async fn subsystem_request(
+        &mut self,
+        channel_id: ChannelId,
+        name: &str,
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        if name == "sftp" {
+            if let Some(channel) = self.new_channels.lock().await.remove(&channel_id) {
+                let sftp = SftpSession::default();
+                session.channel_success(channel_id)?;
+                russh_sftp::server::run(channel.into_stream(), sftp).await;
+            }
+        } else {
+            session.channel_failure(channel_id)?
+        }
+
+        Ok(())
     }
 
     async fn data(
@@ -203,15 +226,16 @@ impl Handler for AppServer {
         data: &[u8],
         session: &mut Session,
     ) -> Result<(), Self::Error> {
-        match data {
-            d => {
+        let ctf_client = self.ctf_clients.lock().await.contains_key(&self.id);
+        match ctf_client {
+            true => {
                 if let Some(ke) =
-                    terminput::Event::parse_from(d).with_context(|| "could not parse key")?
+                    terminput::Event::parse_from(data).with_context(|| "could not parse key")?
                 {
                     match terminput_crossterm::to_crossterm(ke)? {
                         Event::Key(k) => match (k.code, k.modifiers) {
                             (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
-                                let mut clients = self.clients.lock().await;
+                                let mut clients = self.ctf_clients.lock().await;
                                 clients.remove(&self.id);
 
                                 // Restore terminal
@@ -225,7 +249,7 @@ impl Handler for AppServer {
                                 let _ = session.handle().close(channel).await;
                             }
                             k => {
-                                let mut clients = self.clients.lock().await;
+                                let mut clients = self.ctf_clients.lock().await;
                                 let (_, app) = clients.get_mut(&self.id).unwrap();
                                 if let Some(s) = app.screen.handle_input(Some(k)) {
                                     app.screen = s;
@@ -236,6 +260,8 @@ impl Handler for AppServer {
                     };
                 }
             }
+
+            false => (),
         }
 
         Ok(())
@@ -258,7 +284,7 @@ impl Handler for AppServer {
             height: row_height as u16,
         };
 
-        let mut clients = self.clients.lock().await;
+        let mut clients = self.ctf_clients.lock().await;
         let (terminal, _) = clients.get_mut(&self.id).unwrap();
         terminal.resize(rect)?;
 
@@ -287,12 +313,37 @@ impl Handler for AppServer {
             width: col_width as u16,
             height: row_height as u16,
         };
+        let channel = self
+            .new_channels
+            .lock()
+            .await
+            .remove(&channel)
+            .ok_or(anyhow!(
+                "Could not get the channel for which a pty was requested"
+            ))?;
 
-        let mut clients = self.clients.lock().await;
-        let (terminal, _) = clients.get_mut(&self.id).unwrap();
+        let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
+
+        let backend = CrosstermBackend::new(terminal_handle);
+
+        // the correct viewport area will be set when the client request a pty
+        let options = TerminalOptions {
+            viewport: Viewport::Fixed(Rect::default()),
+        };
+
+        let mut terminal = Terminal::with_options(backend, options)?;
+        let key = self.key.clone();
+        let app = App::new(
+            self.conf.clone(),
+            key.clone().ok_or(anyhow!("no public key"))?,
+        );
+
         execute!(terminal.backend_mut(), EnterAlternateScreen, Hide)?;
         terminal.resize(rect)?;
-        session.channel_success(channel)?;
+        session.channel_success(channel.id())?;
+
+        let mut clients = self.ctf_clients.lock().await;
+        clients.insert(self.id, (terminal, app));
 
         Ok(())
     }
@@ -301,10 +352,208 @@ impl Handler for AppServer {
 impl Drop for AppServer {
     fn drop(&mut self) {
         let id = self.id;
-        let clients = self.clients.clone();
+        let clients = self.ctf_clients.clone();
         tokio::spawn(async move {
             let mut clients = clients.lock().await;
             clients.remove(&id);
         });
+    }
+}
+
+#[derive(Default)]
+struct SftpSession {
+    version: Option<u32>,
+    root_dir_read_done: bool,
+    file_read_done: bool,
+}
+
+impl russh_sftp::server::Handler for SftpSession {
+    type Error = StatusCode;
+
+    fn unimplemented(&self) -> Self::Error {
+        StatusCode::OpUnsupported
+    }
+
+    async fn stat(
+        &mut self,
+        id: u32,
+        path: String,
+    ) -> Result<russh_sftp::protocol::Attrs, Self::Error> {
+        if let Some(path) = get_file_path(&path) {
+            if path.is_file() {
+                let mut attrs = FileAttributes::default();
+                attrs.set_dir(false);
+                attrs.set_symlink(false);
+                attrs.set_regular(true);
+                return Ok(russh_sftp::protocol::Attrs { id, attrs: attrs });
+            }
+        }
+        Err(StatusCode::NoSuchFile)
+    }
+
+    async fn fstat(
+        &mut self,
+        id: u32,
+        handle: String,
+    ) -> Result<russh_sftp::protocol::Attrs, Self::Error> {
+        if let Some(path) = get_file_path(&handle) {
+            if path.is_file() {
+                return Ok(russh_sftp::protocol::Attrs {
+                    id,
+                    attrs: FileAttributes::default(),
+                });
+            }
+        }
+        Err(StatusCode::NoSuchFile)
+    }
+
+    async fn lstat(
+        &mut self,
+        id: u32,
+        path: String,
+    ) -> Result<russh_sftp::protocol::Attrs, Self::Error> {
+        if let Some(path) = get_file_path(&path) {
+            if path.is_file() {
+                let mut attrs = FileAttributes::default();
+                attrs.set_dir(false);
+                attrs.set_symlink(false);
+                attrs.set_regular(true);
+                return Ok(russh_sftp::protocol::Attrs { id, attrs: attrs });
+            }
+        }
+        Err(StatusCode::NoSuchFile)
+    }
+
+    async fn init(
+        &mut self,
+        version: u32,
+        extensions: HashMap<String, String>,
+    ) -> Result<russh_sftp::protocol::Version, Self::Error> {
+        if self.version.is_some() {
+            return Err(StatusCode::ConnectionLost);
+        }
+        self.version = Some(version);
+        Ok(Version::new())
+    }
+
+    async fn close(
+        &mut self,
+        id: u32,
+        handle: String,
+    ) -> Result<russh_sftp::protocol::Status, Self::Error> {
+        Ok(Status {
+            id,
+            status_code: StatusCode::Ok,
+            error_message: "Ok".to_string(),
+            language_tag: "en-US".to_string(),
+        })
+    }
+
+    async fn open(
+        &mut self,
+        id: u32,
+        filename: String,
+        pflags: russh_sftp::protocol::OpenFlags,
+        attrs: russh_sftp::protocol::FileAttributes,
+    ) -> Result<russh_sftp::protocol::Handle, Self::Error> {
+        if let Some(path) = get_file_path(&filename) {
+            if path.is_file() {
+                self.file_read_done = false;
+
+                return Ok(russh_sftp::protocol::Handle {
+                    id,
+                    handle: filename,
+                });
+            }
+        }
+        Err(StatusCode::NoSuchFile)
+    }
+
+    async fn read(
+        &mut self,
+        id: u32,
+        handle: String,
+        offset: u64,
+        len: u32,
+    ) -> Result<russh_sftp::protocol::Data, Self::Error> {
+        if !self.file_read_done {
+            self.file_read_done = true;
+            if let Some(p) = get_file_path(&handle) {
+                let mut file = std::fs::File::open(p).map_err(|_| StatusCode::Failure)?;
+                let mut data = vec![];
+                file.read_to_end(&mut data)
+                    .map_err(|_| StatusCode::Failure)?;
+                return Ok(russh_sftp::protocol::Data { id, data });
+            }
+            return Err(StatusCode::NoSuchFile);
+        }
+        Err(StatusCode::Eof)
+    }
+
+    async fn realpath(&mut self, id: u32, path: String) -> Result<Name, Self::Error> {
+        Ok(Name {
+            id,
+            files: vec![File::dummy("/")],
+        })
+    }
+
+    async fn opendir(
+        &mut self,
+        id: u32,
+        path: String,
+    ) -> Result<russh_sftp::protocol::Handle, Self::Error> {
+        self.root_dir_read_done = false;
+        Ok(russh_sftp::protocol::Handle { id, handle: path })
+    }
+
+    async fn readdir(&mut self, id: u32, handle: String) -> Result<Name, Self::Error> {
+        if handle == "/" && !self.root_dir_read_done {
+            self.root_dir_read_done = true;
+            let files = get_all_files();
+            return Ok(Name {
+                id,
+                files: files
+                    .iter()
+                    .map(|x| {
+                        File::new(
+                            x.file_name().unwrap().to_str().unwrap(),
+                            FileAttributes::default(),
+                        )
+                    })
+                    .collect(),
+            });
+        }
+        // If all files have been sent to the client, respond with an EOF
+        Err(StatusCode::Eof)
+    }
+}
+
+fn get_file_path(path: &str) -> Option<PathBuf> {
+    let mut new_path = std::env::home_dir()?;
+    new_path.push(".config");
+    new_path.push("sshack");
+    new_path.push("files");
+    new_path.push(path.trim_start_matches("/"));
+    // path traversal
+    if new_path.ancestors().any(|x| x.ends_with("..")) {
+        return None;
+    };
+    println!("{:?}", new_path);
+    return Some(new_path);
+}
+
+fn get_all_files() -> Vec<PathBuf> {
+    let Some(mut new_path) = std::env::home_dir() else {
+        return vec![];
+    };
+    new_path.push(".config");
+    new_path.push("sshack");
+    new_path.push("files");
+    if let Ok(read) = new_path.read_dir() {
+        read.filter(|x| x.as_ref().is_ok_and(|f| f.path().is_file()))
+            .map(|x| x.unwrap().path())
+            .collect()
+    } else {
+        vec![]
     }
 }
