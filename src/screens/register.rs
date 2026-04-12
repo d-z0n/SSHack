@@ -54,7 +54,11 @@ impl Screen for RegisterScreen {
             f,
             vec!["REGISTER"],
             0,
-            "QUIT<CTRL+Q> SUBMIT<ENTER>",
+            if self.conf.password.is_some() {
+                "^Q[QUIT] ↵[SUBMIT]"
+            } else {
+                "^Q[QUIT] ↵[SUBMIT] ⇵[NAV]"
+            },
             self.error.as_deref(),
             None,
             &self.conf,

@@ -3,6 +3,7 @@
 cargo install --path .
 
 mkdir -p ~/.config/sshack/
+mkdir -p ~/.config/sshack/files
 
 cp -r ./themes ~/.config/sshack/
 cp ./config.toml ~/.config/sshack/

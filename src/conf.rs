@@ -12,6 +12,7 @@ pub struct Conf {
     pub port: u16,
     pub animation: bool,
     pub password: Option<String>,
+    pub about: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -21,6 +22,7 @@ struct ConfToml {
     port: u16,
     animation: Option<bool>,
     password: Option<String>,
+    about: Option<String>,
 }
 impl ConfToml {
     fn conf(self) -> Option<Conf> {
@@ -30,6 +32,7 @@ impl ConfToml {
             port: self.port,
             animation: self.animation.unwrap_or(true),
             password: self.password,
+            about: self.about,
         })
     }
 }
@@ -46,6 +49,12 @@ impl Conf {
 "#
             .to_string(),
             port: 1337,
+            about: Some(
+                "
+This CTF was built using the SSHack ctf framework: https://github.com/d-z0n/SSHack 
+                "
+                .to_string(),
+            ),
             animation: true,
             password: None,
         })

@@ -78,18 +78,20 @@ impl Screen for BrowseScreen {
         let commands = match self.state {
             BrowseScreenState::Browse => {
                 if self.filter.ui_active {
-                    "QUIT<CTRL+Q> GO BACK<ESC> CHANGE KIND<TAB> CHANGE VALUE<LEFT|RIGHT> APPLY<ENTER>"
+                    "^Q[QUIT] Esc[BACK] ⇥[KIND] ⇄[VALUE] ↵[APPLY]"
                 } else {
-                    "QUIT<CTRL+Q> NAV<UP|DOWN|TAB> SELECT<ENTER> RELOAD<CTRL+R> TABS<CTRL+LEFT|RIGHT> FILTER<CTRL+F>"
+                    "^Q[QUIT] ⇵[NAV] ↵[SELECT] ^R[RELOAD] ^⇄[TABS] ^F[FILTER]"
                 }
             }
-            BrowseScreenState::Submit => {
-                "QUIT<CTRL+Q> GO BACK<ESC> SCROLL<UP|DOWN> SUBMIT<ENTER> RELOAD<CTRL+R>"
-            }
+            BrowseScreenState::Submit => "^Q[QUIT] Esc[BACK] ⇵[SCROLL] ↵[SUBMIT] ^R[RELOAD]",
         };
         let area = draw_screen_border(
             f,
-            vec!["FLAGS", "LEADERBOARD"],
+            if self.conf.about.is_some() {
+                vec!["FLAGS", "LEADERBOARD", "ABOUT"]
+            } else {
+                vec!["FLAGS", "LEADERBOARD"]
+            },
             0,
             commands,
             self.error.as_deref(),

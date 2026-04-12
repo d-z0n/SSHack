@@ -10,6 +10,7 @@ use crate::{
     conf::Conf,
     database::User,
     screens::{
+        about::AboutScreen,
         flags::BrowseScreen,
         home::HomeScreen,
         screen::{Screen, draw_screen_border},
@@ -39,18 +40,31 @@ impl Screen for LeaderboardScreen {
             (KeyCode::Left, KeyModifiers::CONTROL) => {
                 return match &self.user {
                     Some(u) => Some(Box::new(BrowseScreen::new(u.clone(), self.conf.clone()))),
-                    None => None, // TODO: make this an error
+                    None => None,
                 };
+            }
+            (KeyCode::Right, KeyModifiers::CONTROL) => {
+                if self.conf.about.is_none() {
+                    return None;
+                }
+                return Some(Box::new(AboutScreen::new(
+                    self.user.clone(),
+                    self.conf.clone(),
+                )));
             }
             _ => (),
         };
         None
     }
     fn render(&mut self, f: &mut Frame) {
-        let commands = "QUIT<CTRL+Q> NAV<UP|DOWN|TAB> RLOAD<CTRL+R> NAV TABS<CTRL+LEFT|RIGHT>";
+        let commands = "^Q[QUIT] ⇵[NAV] ^R[RELOAD] ^⇄[TAB]";
         let area = draw_screen_border(
             f,
-            vec!["FLAGS", "LEADERBOARD"],
+            if self.conf.about.is_some() {
+                vec!["FLAGS", "LEADERBOARD", "ABOUT"]
+            } else {
+                vec!["FLAGS", "LEADERBOARD"]
+            },
             1,
             commands,
             self.error.as_deref(),

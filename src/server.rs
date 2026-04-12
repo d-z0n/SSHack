@@ -533,9 +533,10 @@ fn get_file_path(path: &str) -> Option<PathBuf> {
     new_path.push(".config");
     new_path.push("sshack");
     new_path.push("files");
+    let check = new_path.canonicalize().ok()?;
     new_path.push(path.trim_start_matches("/"));
     // path traversal
-    if new_path.ancestors().any(|x| x.ends_with("..")) {
+    if !new_path.canonicalize().ok()?.starts_with(check) {
         return None;
     };
     println!("{:?}", new_path);

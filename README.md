@@ -60,14 +60,16 @@ Some things that I am looking into adding right now are:
 
 ### v0.x.x
 
-#### v.0.2.0 [ ]
- [X] File download for challanges over sftp
+#### v.0.3.0 [ ]
  [ ] Teams (optional)
+
+#### v.0.2.0 [X]
+ [X] File download for challanges over sftp
  [X] Password protected ctfs (optional)
  [X] Make animations optional
- [ ] About page (optional)
+ [X] About page (optional)
  [X] Include SSHack version
- [ ] Improve instructions
+ [X] Improve instructions
  [X] Fix pasting bug
 
 #### v0.1.0 [X]

@@ -1,4 +1,7 @@
+# Port to run on
 port = 1337
+
+# Banner Text
 banner = '''
    ▄████████    ▄████████    ▄█    █▄       ▄████████  ▄████████    ▄█   ▄█▄
   ███    ███   ███    ███   ███    ███     ███    ███ ███    ███   ███ ▄███▀
@@ -9,6 +12,7 @@ banner = '''
    ▄█    ███    ▄█    ███   ███    ███     ███    ███ ███    ███   ███ ▀███▄
  ▄████████▀   ▄████████▀    ███    █▀      ███    █▀  ████████▀    ███   ▀█▀
 '''
+
 # themes use [base16](https://github.com/chriskempson/base16)
 # all themes are themes I have found on the internet,
 # the raw files can be found in `~/.config/sshack/themes`
@@ -20,6 +24,7 @@ banner = '''
 # * icy
 # * caroline
 # * greenscreen
+# * grayscale-dark
 #
 # you can also create your own themes
 # by creating a new file in the themes
@@ -28,3 +33,12 @@ banner = '''
 # so focus on them. should be base00, 01, 03,
 # 04, 05 and 08 but I might have forgot some.
 theme = "colors"
+
+# Disable the banner animation
+# animation = false
+
+# Set a password for private ctfs
+# password = "test"
+
+# Set text to show in about page (or uncomment to remove about page)
+about = "This CTF was built using the SSHack ctf framework: https://github.com/d-z0n/SSHack"
