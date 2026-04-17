@@ -20,8 +20,12 @@ pub struct Args {
 pub enum Commands {
     /// Run the server
     Run {
+        /// run locally
         #[arg(short, long)]
         local: bool,
+        /// open leaderboard page without logging in
+        #[arg(long, default_value_t = true)]
+        leaderboard: bool,
     },
     /// Add/Delete/List flags
     ///  (should be used before ctf starts as it will change flag id's and hence remove solves)

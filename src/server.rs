@@ -78,16 +78,18 @@ pub struct AppServer {
     id: usize,
     conf: Conf,
     key: Option<russh::keys::PublicKey>,
+    leaderboard: bool,
 }
 
 impl AppServer {
-    pub fn new(conf: Conf) -> Self {
+    pub fn new(conf: Conf, leaderboard: bool) -> Self {
         Self {
             ctf_clients: Arc::new(Mutex::new(HashMap::new())),
             id: 0,
             key: None,
             new_channels: Arc::new(Mutex::new(HashMap::new())),
             conf,
+            leaderboard,
         }
     }
 
@@ -336,6 +338,7 @@ impl Handler for AppServer {
         let app = App::new(
             self.conf.clone(),
             key.clone().ok_or(anyhow!("no public key"))?,
+            self.leaderboard,
         );
 
         execute!(terminal.backend_mut(), EnterAlternateScreen, Hide)?;

@@ -18,7 +18,7 @@ use ratatui::{
 use crate::{
     cli::{Args, Commands},
     conf::Conf,
-    screens::home::HomeScreen,
+    screens::{home::HomeScreen, leaderboard::LeaderboardScreen},
 };
 
 // inspired by: https://github.com/Eugeny/russh/blob/main/russh/examples/ratatui_app.rs
@@ -27,14 +27,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     database::create_missing_db();
     let args = Args::parse();
     match args.command {
-        Commands::Run { local } => {
+        Commands::Run { local, leaderboard } => {
             let conf = Conf::get();
             if !local {
-                let mut server = server::AppServer::new(conf);
+                let mut server = server::AppServer::new(conf, leaderboard);
                 server.run().await.expect("Failed running server");
             } else {
                 let mut term = ratatui::init();
-                let res = app(&mut term, conf);
+                let res = app(&mut term, conf, leaderboard);
                 ratatui::restore();
                 return res;
             }
@@ -45,9 +45,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn app(terminal: &mut DefaultTerminal, conf: Conf) -> Result<(), Box<dyn Error>> {
+fn app(
+    terminal: &mut DefaultTerminal,
+    conf: Conf,
+    leaderboard: bool,
+) -> Result<(), Box<dyn Error>> {
     let mut app = App {
-        screen: Box::new(screens::home::HomeScreen::new(
+        screen: if !leaderboard {
+            Box::new(screens::home::HomeScreen::new(
             conf,
             russh::keys::PublicKey::read_openssh_file(
                 &std::env::home_dir()
@@ -56,7 +61,10 @@ fn app(terminal: &mut DefaultTerminal, conf: Conf) -> Result<(), Box<dyn Error>>
                     )?
                     .join(".ssh/id_ed25519.pub"),
             )?,
-        )),
+        ))
+        } else {
+            Box::new(LeaderboardScreen::new(None, conf))
+        },
     };
     loop {
         terminal.draw(|f| app.render(f))?;
@@ -87,9 +95,13 @@ impl App {
         self.screen.render(f)
     }
 
-    fn new(conf: Conf, key: russh::keys::PublicKey) -> Self {
+    fn new(conf: Conf, key: russh::keys::PublicKey, leaderboard: bool) -> Self {
         Self {
-            screen: Box::new(HomeScreen::new(conf, key)),
+            screen: if !leaderboard {
+                Box::new(HomeScreen::new(conf, key))
+            } else {
+                Box::new(LeaderboardScreen::new(None, conf))
+            },
         }
     }
 }
